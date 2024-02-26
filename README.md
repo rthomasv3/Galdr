@@ -12,7 +12,7 @@ Features:
 * Reasonable binary size (example is 23.7MB)
 * Dependency injection
 
-![screenshot](https://raw.githubusercontent.com/rthomasv3/Galdr/master/screenshot.png)
+![screenshot](https://raw.githubusercontent.com/rthomasv3/Galdr/master/Galdr/screenshot.png)
 
 ### Setup
 
