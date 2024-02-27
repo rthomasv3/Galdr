@@ -11,7 +11,7 @@ using SharpWebview.Content;
 
 namespace Galdr;
 
-internal sealed class EmbeddedContent : IWebviewContent, IDisposable
+public sealed class EmbeddedContent : IWebviewContent, IDisposable
 {
     #region Fields
 
@@ -21,6 +21,12 @@ internal sealed class EmbeddedContent : IWebviewContent, IDisposable
 
     #region Constructor
 
+    /// <summary>
+    /// Creates a new instance of the <see cref="EmbeddedContent"/> class.
+    /// </summary>
+    /// <remarks>
+    /// Starts a new <see cref="WebApplication"/> on the given port which serves <c>index.html</c> from the embedded <c>dist</c> directory.
+    /// </remarks>
     public EmbeddedContent(int port = 0)
     {
         WebApplicationBuilder webApplicationBuilder = WebApplication.CreateBuilder();
@@ -48,11 +54,15 @@ internal sealed class EmbeddedContent : IWebviewContent, IDisposable
 
     #region Public Methods
 
+    /// <inheritdoc />
     public void Dispose()
     {
         _webApp.DisposeAsync();
     }
 
+    /// <summary>
+    /// Returns the URL of the <see cref="WebApplication"/>.
+    /// </summary>
     public string ToWebviewUrl()
     {
         return _webApp.Urls.First().Replace("127.0.0.1", "localhost");

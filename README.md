@@ -31,6 +31,8 @@ An example project can be found [here](https://github.com/rthomasv3/GaldrPOC) to
 
 #### Example Main
 
+> Please note the `[STAThread]` attribute is required.
+
 ```cs
 internal class Program
 {

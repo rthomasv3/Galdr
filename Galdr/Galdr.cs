@@ -22,6 +22,17 @@ public class Galdr : IDisposable
 
     #region Constructor
 
+    /// <summary>
+    /// Creates a new instance of the <see cref="Galdr"/> class.
+    /// </summary>
+    /// <remarks>
+    /// Requires the threading model for the application to be single-threaded apartment (<see cref="STAThreadAttribute"/>).
+    /// </remarks>
+    /// <exception cref="NullReferenceException">
+    /// </exception>
+    /// <exception cref="AccessViolationException">
+    /// Thrown when the threading model for the application is not single-threaded apartment (<see cref="STAThreadAttribute"/>).
+    /// </exception>
     public Galdr(GaldrOptions options)
     {
         options.Services.AddSingleton(this);
@@ -44,22 +55,34 @@ public class Galdr : IDisposable
 
     #region Public Methods
 
+    /// <summary>
+    /// Runs the main loop of the <see cref="Webview"/>.
+    /// </summary>
     public void Run()
     {
         _webView.Run();
     }
 
+    /// <summary>
+    /// Dispatches a new CustomEvent of the given name on the main window and thread.
+    /// </summary>
     public void PublishEvent<T>(string eventName, T args)
     {
         string js = $"window.dispatchEvent(new CustomEvent('{eventName}', {{ detail: {JsonConvert.SerializeObject(args)} }}));";
         _webView.Dispatch(() => _webView.Evaluate(js));
     }
 
+    /// <summary>
+    /// Opens a system directory selection dialog.
+    /// </summary>
+    /// <returns>
+    /// The path of the directory or null if cancelled.
+    /// </returns>
     public async Task<string> OpenDirectoryDialog()
     {
         return await Task.Run(() =>
         {
-            string directory = String.Empty;
+            string directory = null;
 
             NativeFileDialogSharp.DialogResult result = NativeFileDialogSharp.Dialog.FolderPicker();
 
@@ -72,11 +95,17 @@ public class Galdr : IDisposable
         });
     }
 
+    /// <summary>
+    /// Opens a system file selection dialog.
+    /// </summary>
+    /// <returns>
+    /// The path of the file or null if cancelled.
+    /// </returns>
     public async Task<string> OpenFileDialog()
     {
         return await Task.Run(() =>
         {
-            string file = String.Empty;
+            string file = null;
 
             NativeFileDialogSharp.DialogResult result = NativeFileDialogSharp.Dialog.FileOpen();
 
@@ -89,11 +118,17 @@ public class Galdr : IDisposable
         });
     }
 
+    /// <summary>
+    /// Opens a system file save dialog.
+    /// </summary>
+    /// <returns>
+    /// The path of the file or null if cancelled.
+    /// </returns>
     public async Task<string> OpenSaveDialog()
     {
         return await Task.Run(() =>
         {
-            string file = String.Empty;
+            string file =null;
 
             NativeFileDialogSharp.DialogResult result = NativeFileDialogSharp.Dialog.FileSave();
 
@@ -106,6 +141,7 @@ public class Galdr : IDisposable
         });
     }
 
+    /// <inheritdoc />
     public void Dispose()
     {
         _webView.Dispose();
@@ -127,7 +163,10 @@ public class Galdr : IDisposable
             {
                 try
                 {
-                    object result = await ExecuteMethod(_commands[commandName], parameters.Skip(1));
+                    MethodInfo method = _commands[commandName];
+
+                    object[] args = ExtractArguments(method, parameters.Skip(1));
+                    object result = await ExecuteMethod(method, args);
 
                     if (result != null)
                     {
@@ -142,11 +181,9 @@ public class Galdr : IDisposable
         }
     }
 
-    private async Task<object> ExecuteMethod(MethodInfo method, IEnumerable<object> parameters)
+    private async Task<object> ExecuteMethod(MethodInfo method, object[] args)
     {
         object result = null;
-
-        object[] args = ExtractArguments(method, parameters);
 
         if (method.IsStatic)
         {

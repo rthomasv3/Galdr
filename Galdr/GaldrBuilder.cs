@@ -20,19 +20,25 @@ public sealed class GaldrBuilder
     private int _minWidth = 800;
     private int _minHeight = 600;
     private int _port = 42069;
-    private bool _debug = true;
+    private bool _debug = false;
     private string _commandNamespace = "Commands";
 
     #endregion
 
     #region Public Methods
 
+    /// <summary>
+    /// Set the application window title.
+    /// </summary>
     public GaldrBuilder SetTitle(string title)
     {
         _title = title;
         return this;
     }
 
+    /// <summary>
+    /// Set the application window width and height.
+    /// </summary>
     public GaldrBuilder SetSize(int width, int height)
     {
         _width = width;
@@ -40,6 +46,9 @@ public sealed class GaldrBuilder
         return this;
     }
 
+    /// <summary>
+    /// Set the minimum width and height of the application window.
+    /// </summary>
     public GaldrBuilder SetMinSize(int minWidth, int minHeight)
     {
         _minWidth = minWidth;
@@ -47,24 +56,36 @@ public sealed class GaldrBuilder
         return this;
     }
 
+    /// <summary>
+    /// Sets the port on which the web application will be served.
+    /// </summary>
     public GaldrBuilder SetPort(int port)
     {
         _port = port;
         return this;
     }
 
+    /// <summary>
+    /// Set to true to activate a debug view (if the current webview implementation supports it).
+    /// </summary>
     public GaldrBuilder SetDebug(bool debug)
     {
         _debug = debug;
         return this;
     }
 
+    /// <summary>
+    /// Sets the namespace to search for methods with the <see cref="CommandAttribute"/>.
+    /// </summary>
     public GaldrBuilder SetCommandNamespace(string commandNamespace)
     {
         _commandNamespace = commandNamespace;
         return this;
     }
 
+    /// <summary>
+    /// Adds a service with a transient lifetime to the services collection for use in dependency injection.
+    /// </summary>
     public GaldrBuilder AddService<T>() 
         where T : class
     {
@@ -72,6 +93,9 @@ public sealed class GaldrBuilder
         return this;
     }
 
+    /// <summary>
+    /// Adds a service with a transient lifetime to the services collection for use in dependency injection.
+    /// </summary>
     public GaldrBuilder AddService<T1, T2>()
         where T1 : class
         where T2 : class, T1
@@ -80,6 +104,9 @@ public sealed class GaldrBuilder
         return this;
     }
 
+    /// <summary>
+    /// Adds a service with a singleton lifetime to the services collection for use in dependency injection.
+    /// </summary>
     public GaldrBuilder AddSingleton<T>()
         where T : class
     {
@@ -87,6 +114,9 @@ public sealed class GaldrBuilder
         return this;
     }
 
+    /// <summary>
+    /// Adds a service with a singleton lifetime to the services collection for use in dependency injection.
+    /// </summary>
     public GaldrBuilder AddSingleton<T1, T2>()
         where T1 : class
         where T2 : class, T1
@@ -95,6 +125,15 @@ public sealed class GaldrBuilder
         return this;
     }
 
+    /// <summary>
+    /// Builds a new instance of the <see cref="Galdr"/> class with the configured options.
+    /// </summary>
+    /// <remarks>
+    /// Requires the threading model for the application to be single-threaded apartment (<see cref="STAThreadAttribute"/>).
+    /// </remarks>
+    /// <exception cref="AccessViolationException">
+    /// Thrown when the threading model for the application is not single-threaded apartment (<see cref="STAThreadAttribute"/>).
+    /// </exception>
     public Galdr Build()
     {
         return new Galdr(new GaldrOptions()

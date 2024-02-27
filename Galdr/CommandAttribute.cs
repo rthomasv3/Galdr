@@ -12,6 +12,9 @@ public sealed class CommandAttribute : Attribute
 
     #region Constructor
 
+    /// <summary>
+    /// Creates a new instance of the <see cref="CommandAttribute"/> class.
+    /// </summary>
     public CommandAttribute(string name = null)
     {
         _name = name;
@@ -21,6 +24,9 @@ public sealed class CommandAttribute : Attribute
 
     #region Properties
 
+    /// <summary>
+    /// The name of the command.
+    /// </summary>
     public string Name => _name;
 
     #endregion
