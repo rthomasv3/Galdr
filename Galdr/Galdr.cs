@@ -40,7 +40,7 @@ public class Galdr : IDisposable
 
         _commands = options.Commands;
 
-        _webView = new(options.Debug);
+        _webView = new(options.Debug, true);
 
         _webView
             .SetTitle(options.Title)

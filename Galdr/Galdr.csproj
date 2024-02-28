@@ -6,13 +6,14 @@
 		<Copyright>Copyright © Robert Thomas 2024</Copyright>
 		<LangVersion>latest</LangVersion>
 		<ApplicationIcon>wizard-round.ico</ApplicationIcon>
-		<VersionPrefix>0.0.4</VersionPrefix>
+		<VersionPrefix>0.0.5</VersionPrefix>
 		<Authors>Robert Thomas</Authors>
 		<RepositoryUrl>https://github.com/rthomasv3/Galdr</RepositoryUrl>
 		<PackageIcon>wizard-round-128.png</PackageIcon>
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
 		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+		<GenerateDocumentationFile>True</GenerateDocumentationFile>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net8.0|AnyCPU'">

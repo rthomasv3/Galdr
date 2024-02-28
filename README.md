@@ -16,26 +16,23 @@ Features:
 
 ### Setup
 
-The setup is pretty straight forward:
+The setup is pretty straight forward and steps are outlined below - or you can use the proof-of-concept example project [here](https://github.com/rthomasv3/GaldrPOC) as a template.
 
 1. Create a new C# console application.
-2. Setup your frontend app in a `src` directory inside your C# project.
-3. Create your `index.html` and `package.json` just like you normally would when setting up a front end project.
-4. Add the `dist` directory path to your `csrpoj` so it will be included as an emeded resource.
-5. Setup Galdr in `Main`.
-6. Optionally set the project as the trim root assembly for smaller binaries (required when trimming due to reflection).
-
-> Use `<OutputType>WinExe</OutputType>` instead of `Exe` to make sure the console window is hidden.
-
-An example project can be found [here](https://github.com/rthomasv3/GaldrPOC) to use as a template.
+2. Use `<OutputType>WinExe</OutputType>` instead of `Exe` to make sure the console window is hidden.
+3. Setup your frontend app in a `src` directory inside your C# project.
+4. Create your `index.html` and `package.json` just like you normally would when setting up a front end project.
+5. Add the `dist` directory path to your `csrpoj` so it will be included as an emeded resource.
+6. Setup Galdr in `Main`.
+    * The entry point to the application requires the `[STAThread]` attribute on Windows.
+7. Optionally set the project as the trim root assembly for smaller binaries (required when trimming due to reflection).
 
 #### Example Main
-
-> Please note the `[STAThread]` attribute is required.
 
 ```cs
 internal class Program
 {
+    // Single-threaded apartment is required for COM on Windows
     [STAThread]
     static void Main(string[] args)
     {
@@ -117,6 +114,6 @@ Note that trimming can break reflection when classes aren't statically reference
 
 ```xml
  <ItemGroup>
-   <TrimmerRootAssembly Include="YouProjectNameHere" />
+   <TrimmerRootAssembly Include="$(AssemblyName)" />
  </ItemGroup>
 ```
