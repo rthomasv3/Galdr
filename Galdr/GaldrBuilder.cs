@@ -1,27 +1,41 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Sockets;
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
-using SharpWebview.Content;
 
 namespace Galdr;
 
+/// <summary>
+/// Class used to configure and build a <see cref="Galdr"/> instance.
+/// </summary>
 public sealed class GaldrBuilder
 {
     #region Fields
 
-    private readonly ServiceCollection _services = new ServiceCollection();
+    private readonly IServiceCollection _services;
 
     private string _title = "Galdr";
     private int _width = 1024;
     private int _height = 768;
     private int _minWidth = 800;
     private int _minHeight = 600;
-    private int _port = 42069;
+    private int _port = 0;
     private bool _debug = false;
     private string _commandNamespace = "Commands";
+
+    #endregion
+
+    #region Constructor
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="GaldrBuilder"/> class.
+    /// </summary>
+    public GaldrBuilder()
+    {
+        _services = new ServiceCollection()
+            .AddSingleton<DialogService>();
+    }
 
     #endregion
 
@@ -139,11 +153,11 @@ public sealed class GaldrBuilder
         return new Galdr(new GaldrOptions()
         {
             Commands = GetCommands(),
-            Content = new EmbeddedContent(_port),
             Debug = _debug,
             Height = _height,
             MinHeight = _minHeight,
             MinWidth = _minWidth,
+            Port = _port,
             Services = _services,
             Title = _title,
             Width = _width,
@@ -153,23 +167,6 @@ public sealed class GaldrBuilder
     #endregion
 
     #region Private Methods
-
-    private IWebviewContent GetContent()
-    {
-        bool serverIsRunning = false;
-
-        try
-        {
-            using TcpClient client = new();
-            IAsyncResult result = client.BeginConnect("localhost", _port, null, null);
-            bool success = result.AsyncWaitHandle.WaitOne(50);
-            client.EndConnect(result);
-            serverIsRunning = true;
-        }
-        catch (SocketException) { }
-
-        return serverIsRunning ? new UrlContent($"http://localhost:{_port}") : new EmbeddedContent(_port);
-    }
 
     private Dictionary<string, MethodInfo> GetCommands()
     {

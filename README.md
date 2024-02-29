@@ -9,10 +9,10 @@ Features:
 * Hot-reload
 * Native file system integration
 * Single file executable
-* Reasonable binary size (example is 23.7MB)
+* Reasonable binary size (POC is 26MB)
 * Dependency injection
 
-![screenshot](https://raw.githubusercontent.com/rthomasv3/Galdr/master/Galdr/screenshot.png)
+![POC Screenshot](https://raw.githubusercontent.com/rthomasv3/Galdr/master/Galdr/screenshot.png)
 
 ### Setup
 
@@ -43,9 +43,8 @@ internal class Program
             .AddSingleton<SingletonExample>()
             .AddService<TransientExample>()
             .SetPort(1313)
-            .Build();
-
-        galdr.Run();
+            .Build()
+            .Run();
     }
 }
 ```
@@ -64,7 +63,7 @@ Then you can use the command anywhere on the frontend with `galdrInvoke`. The co
 
 ```js
 galdrInvoke("greet", { name: name.value })
-    .then(a => console.log(a))
+    .then(name => greetMsg.value = name)
     .catch(e => console.error(e));
 
 // or using async/await

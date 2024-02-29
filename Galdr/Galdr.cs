@@ -1,15 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SharpWebview;
+using SharpWebview.Content;
 
 namespace Galdr;
 
+/// <summary>
+/// Class used to create a <see cref="Webview"/> and handle interactions between the frontend and backend.
+/// </summary>
 public class Galdr : IDisposable
 {
     #region Fields
@@ -17,6 +23,7 @@ public class Galdr : IDisposable
     private readonly Webview _webView;
     private readonly IServiceProvider _serviceProvider;
     private readonly Dictionary<string, MethodInfo> _commands;
+    private readonly IWebviewContent _content;
 
     #endregion
 
@@ -35,20 +42,20 @@ public class Galdr : IDisposable
     /// </exception>
     public Galdr(GaldrOptions options)
     {
-        options.Services.AddSingleton(this);
-        _serviceProvider = options.Services.BuildServiceProvider();
-
         _commands = options.Commands;
 
-        _webView = new(options.Debug, true);
+        _content = GetContent(options.Port);
 
-        _webView
+        _webView = new Webview(options.Debug, true)
             .SetTitle(options.Title)
             .SetSize(options.Width, options.Height, WebviewHint.None)
             .SetSize(options.MinWidth, options.MinHeight, WebviewHint.Min)
-            .Bind("galdrInvoke", HandleCommand);
+            .Bind("galdrInvoke", HandleCommand)
+            .Navigate(_content);
 
-        _webView.Navigate(options.Content);
+        _serviceProvider = options.Services
+            .AddTransient(_ => new EventService(_webView))
+            .BuildServiceProvider();
     }
 
     #endregion
@@ -58,98 +65,44 @@ public class Galdr : IDisposable
     /// <summary>
     /// Runs the main loop of the <see cref="Webview"/>.
     /// </summary>
-    public void Run()
+    public Galdr Run()
     {
         _webView.Run();
-    }
-
-    /// <summary>
-    /// Dispatches a new CustomEvent of the given name on the main window and thread.
-    /// </summary>
-    public void PublishEvent<T>(string eventName, T args)
-    {
-        string js = $"window.dispatchEvent(new CustomEvent('{eventName}', {{ detail: {JsonConvert.SerializeObject(args)} }}));";
-        _webView.Dispatch(() => _webView.Evaluate(js));
-    }
-
-    /// <summary>
-    /// Opens a system directory selection dialog.
-    /// </summary>
-    /// <returns>
-    /// The path of the directory or null if cancelled.
-    /// </returns>
-    public async Task<string> OpenDirectoryDialog()
-    {
-        return await Task.Run(() =>
-        {
-            string directory = null;
-
-            NativeFileDialogSharp.DialogResult result = NativeFileDialogSharp.Dialog.FolderPicker();
-
-            if (result.IsOk)
-            {
-                directory = result.Path;
-            }
-
-            return directory;
-        });
-    }
-
-    /// <summary>
-    /// Opens a system file selection dialog.
-    /// </summary>
-    /// <returns>
-    /// The path of the file or null if cancelled.
-    /// </returns>
-    public async Task<string> OpenFileDialog()
-    {
-        return await Task.Run(() =>
-        {
-            string file = null;
-
-            NativeFileDialogSharp.DialogResult result = NativeFileDialogSharp.Dialog.FileOpen();
-
-            if (result.IsOk)
-            {
-                file = result.Path;
-            }
-
-            return file;
-        });
-    }
-
-    /// <summary>
-    /// Opens a system file save dialog.
-    /// </summary>
-    /// <returns>
-    /// The path of the file or null if cancelled.
-    /// </returns>
-    public async Task<string> OpenSaveDialog()
-    {
-        return await Task.Run(() =>
-        {
-            string file =null;
-
-            NativeFileDialogSharp.DialogResult result = NativeFileDialogSharp.Dialog.FileSave();
-
-            if (result.IsOk)
-            {
-                file = result.Path;
-            }
-
-            return file;
-        });
+        return this;
     }
 
     /// <inheritdoc />
     public void Dispose()
     {
+        if (_content is IDisposable disposableContent)
+        {
+            disposableContent.Dispose();
+        }
+
         _webView.Dispose();
     }
 
     #endregion
 
     #region Private Methods
+
+    private IWebviewContent GetContent(int port)
+    {
+        bool serverIsRunning = false;
+        string url = $"http://localhost:{port}";
+
+        try
+        {
+            using HttpClient client = new();
+            CancellationTokenSource tokenSource = new CancellationTokenSource();
+            tokenSource.CancelAfter(250);
+            _ = client.GetAsync(url, tokenSource.Token).Result;
+            serverIsRunning = true;
+        }
+        catch { }
+
+        return serverIsRunning ? new UrlContent(url) : new EmbeddedContent(port);
+    }
 
     private async void HandleCommand(string id, string paramString)
     {

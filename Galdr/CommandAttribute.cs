@@ -2,6 +2,9 @@
 
 namespace Galdr;
 
+/// <summary>
+/// Class used to tag methods for use on the frontend.
+/// </summary>
 public sealed class CommandAttribute : Attribute
 {
     #region Fields

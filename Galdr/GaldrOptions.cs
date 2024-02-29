@@ -5,6 +5,9 @@ using SharpWebview.Content;
 
 namespace Galdr;
 
+/// <summary>
+/// Class used to define the configuration for a <see cref="Galdr"/> instance.
+/// </summary>
 public sealed class GaldrOptions
 {
     /// <summary>
@@ -40,15 +43,12 @@ public sealed class GaldrOptions
     /// <summary>
     /// The collection of services for use in executing commands and injecting dependencies.
     /// </summary>
-    public ServiceCollection Services { get; init; }
+    public IServiceCollection Services { get; init; }
 
     /// <summary>
-    /// The web view content to serve in the application.
+    /// The port the content is being served from.
     /// </summary>
-    /// <remarks>
-    /// Options include <see cref="HostedContent"/>, <see cref="HtmlContent"/>, <see cref="UrlContent"/>, or <see cref="EmbeddedContent"/>.
-    /// </remarks>
-    public IWebviewContent Content { get; init; }
+    public int Port { get; init; }
 
     /// <summary>
     /// A dictionary mapping a name for use in <c>galdrInvoke</c> with the associated C# method to call.

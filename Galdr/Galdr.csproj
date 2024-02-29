@@ -5,8 +5,7 @@
 		<Description>A multi-platform desktop app framework for C#.</Description>
 		<Copyright>Copyright © Robert Thomas 2024</Copyright>
 		<LangVersion>latest</LangVersion>
-		<ApplicationIcon>wizard-round.ico</ApplicationIcon>
-		<VersionPrefix>0.0.5</VersionPrefix>
+		<VersionPrefix>0.0.6</VersionPrefix>
 		<Authors>Robert Thomas</Authors>
 		<RepositoryUrl>https://github.com/rthomasv3/Galdr</RepositoryUrl>
 		<PackageIcon>wizard-round-128.png</PackageIcon>
@@ -27,10 +26,6 @@
 	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net6.0|AnyCPU'">
 	  <DebugType>none</DebugType>
 	</PropertyGroup>
-
-	<ItemGroup>
-	  <Content Include="wizard-round.ico" />
-	</ItemGroup>
 
 	<ItemGroup>
 		<None Include="wizard-round-128.png" Pack="true" PackagePath="" />

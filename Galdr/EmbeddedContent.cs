@@ -11,7 +11,10 @@ using SharpWebview.Content;
 
 namespace Galdr;
 
-public sealed class EmbeddedContent : IWebviewContent, IDisposable
+/// <summary>
+/// Class used to serve content embedded in the <c>dist</c> directory of the assembly.
+/// </summary>
+internal sealed class EmbeddedContent : IWebviewContent, IDisposable
 {
     #region Fields
 
