@@ -15,21 +15,18 @@ public sealed class DialogService
     /// <returns>
     /// The path of the directory or null if cancelled.
     /// </returns>
-    public async Task<string> OpenDirectoryDialog(string defaultPath = null)
+    public string OpenDirectoryDialog(string defaultPath = null)
     {
-        return await Task.Run(() =>
+        string directory = null;
+
+        DialogResult result = Dialog.FolderPicker(defaultPath);
+
+        if (result.IsOk)
         {
-            string directory = null;
+            directory = result.Path;
+        }
 
-            DialogResult result = Dialog.FolderPicker(defaultPath);
-
-            if (result.IsOk)
-            {
-                directory = result.Path;
-            }
-
-            return directory;
-        });
+        return directory;
     }
 
     /// <summary>
@@ -38,21 +35,18 @@ public sealed class DialogService
     /// <returns>
     /// The path of the file or null if cancelled.
     /// </returns>
-    public async Task<string> OpenFileDialog(string filterList = null, string defaultPath = null)
+    public string OpenFileDialog(string filterList = null, string defaultPath = null)
     {
-        return await Task.Run(() =>
+        string file = null;
+
+        DialogResult result = Dialog.FileOpen(filterList, defaultPath);
+
+        if (result.IsOk)
         {
-            string file = null;
+            file = result.Path;
+        }
 
-            DialogResult result = Dialog.FileOpen(filterList, defaultPath);
-
-            if (result.IsOk)
-            {
-                file = result.Path;
-            }
-
-            return file;
-        });
+        return file;
     }
 
     /// <summary>
@@ -61,21 +55,18 @@ public sealed class DialogService
     /// <returns>
     /// The paths of the files or null if cancelled.
     /// </returns>
-    public async Task<string[]> OpenFileDialogMultiple(string filterList = null, string defaultPath = null)
+    public string[] OpenFileDialogMultiple(string filterList = null, string defaultPath = null)
     {
-        return await Task.Run(() =>
+        string[] files = null;
+
+        DialogResult result = Dialog.FileOpenMultiple(filterList, defaultPath);
+
+        if (result.IsOk)
         {
-            string[] files = null;
+            files = result.Paths.ToArray();
+        }
 
-            DialogResult result = Dialog.FileOpenMultiple(filterList, defaultPath);
-
-            if (result.IsOk)
-            {
-                files = result.Paths.ToArray();
-            }
-
-            return files;
-        });
+        return files;
     }
 
     /// <summary>
@@ -84,20 +75,17 @@ public sealed class DialogService
     /// <returns>
     /// The path of the file or null if cancelled.
     /// </returns>
-    public async Task<string> OpenSaveDialog(string filterList = null, string defaultPath = null)
+    public string OpenSaveDialog(string filterList = null, string defaultPath = null)
     {
-        return await Task.Run(() =>
+        string file = null;
+
+        DialogResult result = Dialog.FileSave(filterList, defaultPath);
+
+        if (result.IsOk)
         {
-            string file = null;
+            file = result.Path;
+        }
 
-            DialogResult result = Dialog.FileSave(filterList, defaultPath);
-
-            if (result.IsOk)
-            {
-                file = result.Path;
-            }
-
-            return file;
-        });
+        return file;
     }
 }
