@@ -49,6 +49,16 @@ internal class Program
 }
 ```
 
+The front end should be included as an embedded resource.
+
+```xml
+<ItemGroup>
+  <EmbeddedResource Include="dist\**\*.*">
+    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+  </EmbeddedResource>
+</ItemGroup>
+```
+
 Any method tagged with the `[Command]` attribute in the `Command` namespace will be added for use on the frontend. The namespace can be customized by calling `SetCommandNamespace` on the builder. The command attribute optionally takes in a command name (it uses the method name by default).
 
 ```cs
