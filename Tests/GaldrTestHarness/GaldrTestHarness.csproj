@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>GaldrTestHarness</RootNamespace>
+    <ApplicationIcon>wizard-round.ico</ApplicationIcon>
+  </PropertyGroup>
+	
+  <ItemGroup>
+    <EmbeddedResource Include="dist\**\*.*">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <TrimmerRootAssembly Include="$(AssemblyName)" />
+  </ItemGroup>
+	
+  <ItemGroup>
+    <Content Include="wizard-round.ico" />
+  </ItemGroup>
+	
+  <ItemGroup>
+    <Folder Include="src\assets\" />
+  </ItemGroup>
+	
+  <ItemGroup>
+    <ProjectReference Include="..\..\Galdr\Galdr.csproj" />
+  </ItemGroup>
+
+</Project>

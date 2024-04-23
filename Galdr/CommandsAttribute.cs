@@ -3,13 +3,12 @@
 namespace Galdr;
 
 /// <summary>
-/// Class used to tag public methods for use on the frontend.
+/// Class used to indicate a class's public methods should be made available for use on the frontend.
 /// </summary>
-public sealed class CommandAttribute : Attribute
+public sealed class CommandsAttribute : Attribute
 {
     #region Fields
 
-    private readonly string _name;
     private readonly bool _prefixClassName;
 
     #endregion
@@ -17,13 +16,11 @@ public sealed class CommandAttribute : Attribute
     #region Constructor
 
     /// <summary>
-    /// Creates a new instance of the <see cref="CommandAttribute"/> class.
+    /// Creates a new instance of the <see cref="CommandsAttribute"/> class.
     /// </summary>
-    /// <param name="name">An optional name to give the command.</param>
     /// <param name="prefixClassName">A value indicating if the class name should be used as a prefix on method names (ex. "myClass.MyMethod").</param>
-    public CommandAttribute(string name = null, bool prefixClassName = false)
+    public CommandsAttribute(bool prefixClassName = false)
     {
-        _name = name;
         _prefixClassName = prefixClassName;
     }
 
@@ -32,14 +29,10 @@ public sealed class CommandAttribute : Attribute
     #region Properties
 
     /// <summary>
-    /// The name of the command.
-    /// </summary>
-    public string Name => _name;
-
-    /// <summary>
     /// A value indicating if the class name should be used as a prefix on method names (ex. "myClass.MyMethod").
     /// </summary>
     public bool PrefixClassName => _prefixClassName;
 
     #endregion
+
 }

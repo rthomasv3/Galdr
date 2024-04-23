@@ -1,5 +1,4 @@
 ﻿using System.Linq;
-using System.Threading.Tasks;
 using NativeFileDialogSharp;
 
 namespace Galdr;
@@ -21,7 +20,7 @@ public sealed class DialogService
 
         DialogResult result = Dialog.FolderPicker(defaultPath);
 
-        if (result.IsOk)
+        if (result?.IsOk == true)
         {
             directory = result.Path;
         }
@@ -41,7 +40,7 @@ public sealed class DialogService
 
         DialogResult result = Dialog.FileOpen(filterList, defaultPath);
 
-        if (result.IsOk)
+        if (result?.IsOk == true)
         {
             file = result.Path;
         }
@@ -61,7 +60,7 @@ public sealed class DialogService
 
         DialogResult result = Dialog.FileOpenMultiple(filterList, defaultPath);
 
-        if (result.IsOk)
+        if (result?.IsOk == true)
         {
             files = result.Paths.ToArray();
         }
@@ -81,7 +80,7 @@ public sealed class DialogService
 
         DialogResult result = Dialog.FileSave(filterList, defaultPath);
 
-        if (result.IsOk)
+        if (result?.IsOk == true)
         {
             file = result.Path;
         }

@@ -140,6 +140,16 @@ public sealed class GaldrBuilder
     }
 
     /// <summary>
+    /// Adds a service instance with singleton lifetime to the services collection for use in dependency injection.
+    /// </summary>
+    public GaldrBuilder AddSingleton<T>(T implementationInstance)
+        where T : class
+    {
+        _services.AddSingleton(implementationInstance);
+        return this;
+    }
+
+    /// <summary>
     /// Builds a new instance of the <see cref="Galdr"/> class with the configured options.
     /// </summary>
     /// <remarks>
@@ -179,22 +189,36 @@ public sealed class GaldrBuilder
 
         foreach (Type commandType in commandTypes)
         {
-            IEnumerable<MethodInfo> commands = commandType
-                .GetMethods()
-                .Where(x => x.IsPublic &&
-                            x.CustomAttributes.Any(y => y.AttributeType == typeof(CommandAttribute)));
+            bool prefixClassName = false;
+            IEnumerable<MethodInfo> commands = null;
+
+            if (commandType.CustomAttributes.Any(x => x.AttributeType == typeof(CommandsAttribute)))
+            {
+                CommandsAttribute commandsAttribute = commandType.GetCustomAttribute<CommandsAttribute>();
+                prefixClassName = commandsAttribute.PrefixClassName;
+
+                commands = commandType
+                    .GetMethods()
+                    .Where(x => x.IsPublic);
+            }
+            else
+            {
+                commands = commandType
+                    .GetMethods()
+                    .Where(x => x.IsPublic &&
+                                x.CustomAttributes.Any(y => y.AttributeType == typeof(CommandAttribute)));
+            }
 
             foreach (MethodInfo command in commands)
             {
                 CommandAttribute commandAttribute = command.GetCustomAttribute<CommandAttribute>();
+                bool shouldPrefixClassName = prefixClassName | commandAttribute?.PrefixClassName ?? false;
 
-                string name = String.IsNullOrWhiteSpace(commandAttribute.Name) ? command.Name : commandAttribute.Name;
-                name = Char.ToLowerInvariant(name[0]) + name.Substring(1);
+                string methodName = String.IsNullOrWhiteSpace(commandAttribute?.Name) ? command.Name : commandAttribute.Name;
+                string commandName = shouldPrefixClassName ? $"{Char.ToLowerInvariant(commandType.Name[0])}{commandType.Name[1..]}.{methodName}" :
+                                                             $"{Char.ToLowerInvariant(methodName[0])}{methodName[1..]}";
 
-                if (!commandMap.ContainsKey(name))
-                {
-                    commandMap.Add(name, command);
-                }
+                commandMap.TryAdd(commandName, command);
             }
         }
 
