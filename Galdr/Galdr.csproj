@@ -1,9 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net8.0;net7.0;net6.0</TargetFrameworks>
+		<TargetFrameworks>net9.0;net8.0;net7.0</TargetFrameworks>
 		<Description>A multi-platform desktop app framework for C#.</Description>
-		<Copyright>Copyright © Robert Thomas 2024</Copyright>
+		<Copyright>Copyright © Robert Thomas 2025</Copyright>
 		<LangVersion>latest</LangVersion>
 		<VersionPrefix>1.0.0</VersionPrefix>
 		<Authors>Robert Thomas</Authors>
@@ -36,7 +36,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="NativeFileDialogSharp" Version="0.5.0" />
+		<PackageReference Include="NativeFileDialogSharp" Version="0.6.0-alpha" />
 		<PackageReference Include="SharpWebview" Version="0.10.0" />
 	</ItemGroup>
 
