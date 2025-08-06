@@ -1,0 +1,150 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text.Json;
+using SharpWebview;
+using SharpWebview.Content;
+
+namespace Galdr.Native;
+
+/// <summary>
+/// Class used to create a <see cref="Webview"/> and handle interactions between the frontend and backend.
+/// </summary>
+public class Galdr : IDisposable
+{
+    #region Fields
+
+    private readonly Webview _webView;
+    private readonly Dictionary<string, CommandInfo> _commands;
+    private readonly IWebviewContent _content;
+
+    #endregion
+
+    #region Constructor
+
+    /// <summary>
+    /// Creates a new instance of the <see cref="Galdr"/> class.
+    /// </summary>
+    /// <remarks>
+    /// Requires the threading model for the application to be single-threaded apartment (<see cref="STAThreadAttribute"/>).
+    /// </remarks>
+    /// <exception cref="NullReferenceException">
+    /// </exception>
+    /// <exception cref="AccessViolationException">
+    /// Thrown when the threading model for the application is not single-threaded apartment (<see cref="STAThreadAttribute"/>).
+    /// </exception>
+    public Galdr(GaldrOptions options)
+    {
+        _commands = options.Commands;
+
+        _content = new LocalHostedContent(options.Port);
+
+        _webView = new Webview(options.Debug, true)
+            .SetTitle(options.Title)
+            .SetSize(options.Width, options.Height, WebviewHint.None)
+            .SetSize(options.MinWidth, options.MinHeight, WebviewHint.Min)
+            .Bind("galdrInvoke", HandleCommand)
+            .Navigate(_content);
+    }
+
+    #endregion
+
+    #region Public Methods
+
+    /// <summary>
+    /// Runs the main loop of the <see cref="Webview"/>.
+    /// </summary>
+    public Galdr Run()
+    {
+        _webView.Run();
+        return this;
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        if (_content is IDisposable disposableContent)
+        {
+            disposableContent.Dispose();
+        }
+
+        _webView.Dispose();
+    }
+
+    #endregion
+
+    #region Private Methods
+
+    private async void HandleCommand(string id, string paramString)
+    {
+        (string commandName, string parameters) = ExtractCommandAndArguments(paramString);
+
+        if (_commands.TryGetValue(commandName, out var commandInfo))
+        {
+            object result = await commandInfo.Handler(parameters);
+
+            if (result == null)
+            {
+                _webView.Return(id, RPCResult.Success, "");
+            }
+            else
+            {
+                if (GaldrJsonSerializerRegistry.TrySerialize(result, commandInfo.ResultType, out string json))
+                {
+                    _webView.Return(id, RPCResult.Success, json);
+                }
+                else
+                {
+                    _webView.Return(id, RPCResult.Success, "");
+                }
+            }
+        }
+    }
+
+    private (string, string) ExtractCommandAndArguments(string paramString)
+    {
+        var trimmed = paramString.Trim();
+
+        // Validate it's an array
+        if (!trimmed.StartsWith('[') || !trimmed.EndsWith(']'))
+            throw new ArgumentException("Invalid JSON array");
+
+        // Remove outer brackets
+        var content = trimmed.Substring(1, trimmed.Length - 2).Trim();
+
+        // Find the first string (command name)
+        if (!content.StartsWith('"'))
+            throw new ArgumentException("Expected command name as first element");
+
+        // Extract command name
+        var commandEndIndex = 1;
+        while (commandEndIndex < content.Length &&
+               (content[commandEndIndex] != '"' || content[commandEndIndex - 1] == '\\'))
+        {
+            commandEndIndex++;
+        }
+
+        var commandName = content.Substring(1, commandEndIndex - 1);
+
+        // Move past the closing quote
+        var index = commandEndIndex + 1;
+
+        // Skip whitespace and comma
+        while (index < content.Length && (char.IsWhiteSpace(content[index]) || content[index] == ','))
+            index++;
+
+        // If we're at the end, no parameters
+        if (index >= content.Length)
+            return (commandName, "{}");
+
+        // Extract the parameters object
+        var parameters = content.Substring(index).Trim();
+
+        // If no parameters object provided, return empty object
+        if (string.IsNullOrEmpty(parameters))
+            return (commandName, "{}");
+
+        return (commandName, parameters);
+    }
+
+    #endregion
+}
