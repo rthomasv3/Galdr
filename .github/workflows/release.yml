@@ -4,15 +4,18 @@
 name: Release
 
 on:
-  push:
-    tags:        
-      - '*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.0.0)'
+        required: true
+        type: string
 
 jobs:
   build:
     runs-on: windows-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Setup .NET 7
       uses: actions/setup-dotnet@v4
       with:
@@ -32,23 +35,20 @@ jobs:
     - name: Test
       run: dotnet test -c Release --no-build
     - name: Pack
-      run: dotnet pack -c release --output .
+      run: dotnet pack -c release --output ./packages
+    - name: List generated packages
+      run: dir ./packages
     - name: Create Release
       id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+      uses: softprops/action-gh-release@v2
       with:
-        tag_name: ${{ github.ref_name }}
-        release_name: Release ${{ github.ref_name }}
+        tag_name: ${{ inputs.version }}
+        name: Release ${{ inputs.version }}
         draft: true
-        prerelease: true
-    - name: Upload Artifact
-      uses: actions/upload-release-asset@v1
+        prerelease: false
+        generate_release_notes: true
+        make_latest: true
+        files: |
+          ./packages/*.nupkg
       env:
-        GITHUB_TOKEN: ${{ github.token }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ${{ github.event.repository.name }}.${{ github.ref_name }}.nupkg
-        asset_name: ${{ github.event.repository.name }}.${{ github.ref_name }}.nupkg
-        asset_content_type: application/zip
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
