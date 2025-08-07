@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text.Json;
+using System.Net.Http;
+using System.Threading.Tasks;
 using SharpWebview;
 using SharpWebview.Content;
 
@@ -15,7 +16,7 @@ public class Galdr : IDisposable
 
     private readonly Webview _webView;
     private readonly Dictionary<string, CommandInfo> _commands;
-    private readonly IWebviewContent _content;
+    private readonly IWebviewContent _mainContent;
 
     #endregion
 
@@ -36,14 +37,39 @@ public class Galdr : IDisposable
     {
         _commands = options.Commands;
 
-        _content = new LocalHostedContent(options.Port);
+        _mainContent = options.ContentProvider ?? new LocalHostedContent(options.Port);
+
+        IWebviewContent loadingContent = options.ShowLoading ? 
+            new LoadingContent(options.LoadingMessage, options.LoadingBackground) : 
+            _mainContent;
 
         _webView = new Webview(options.Debug, true)
             .SetTitle(options.Title)
-            .SetSize(options.Width, options.Height, WebviewHint.None)
-            .SetSize(options.MinWidth, options.MinHeight, WebviewHint.Min)
             .Bind("galdrInvoke", HandleCommand)
-            .Navigate(_content);
+            .Navigate(loadingContent);
+
+        if (options.ShowLoading)
+        {
+            Task.Run(async () =>
+            {
+                await WaitForMainContentReady();
+
+                _webView.Dispatch(async () =>
+                {
+                    _webView.Navigate(_mainContent);
+
+                    await Task.Delay(250);
+
+                    _webView.SetSize(options.Width, options.Height, WebviewHint.None);
+                    _webView.SetSize(options.MinWidth, options.MinHeight, WebviewHint.Min);
+                });
+            });
+        }
+        else
+        {
+            _webView.SetSize(options.Width, options.Height, WebviewHint.None);
+            _webView.SetSize(options.MinWidth, options.MinHeight, WebviewHint.Min);
+        }
     }
 
     #endregion
@@ -62,9 +88,13 @@ public class Galdr : IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
-        if (_content is IDisposable disposableContent)
+        if (_mainContent is IDisposable disposableContent)
         {
             disposableContent.Dispose();
+        }
+        else if (_mainContent is IAsyncDisposable asyncDisposableContent)
+        {
+            asyncDisposableContent.DisposeAsync();
         }
 
         _webView.Dispose();
@@ -144,6 +174,19 @@ public class Galdr : IDisposable
             return (commandName, "{}");
 
         return (commandName, parameters);
+    }
+
+    private async Task WaitForMainContentReady()
+    {
+        await Task.Delay(250);
+
+        try
+        {
+            using var httpClient = new HttpClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(3);
+            await httpClient.GetAsync(_mainContent.ToWebviewUrl());
+        }
+        catch { }
     }
 
     #endregion

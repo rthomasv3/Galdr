@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+using SharpWebview.Content;
 
 namespace Galdr.Native;
 
@@ -25,6 +25,10 @@ public sealed class GaldrBuilder
     private int _port = 0;
     private bool _debug = false;
     private readonly Dictionary<string, CommandInfo> _commands = new();
+    private IWebviewContent _contentProvider;
+    private bool _showLoading;
+    private string _loadingMessage;
+    private string _loadingBackground;
 
     private IServiceProvider _serviceProvider;
 
@@ -92,6 +96,26 @@ public sealed class GaldrBuilder
     public GaldrBuilder SetDebug(bool debug)
     {
         _debug = debug;
+        return this;
+    }
+
+    /// <summary>
+    /// Sets the content provider to use in web view.
+    /// </summary>
+    public GaldrBuilder SetContentProvider(IWebviewContent content)
+    {
+        _contentProvider = content;
+        return this;
+    }
+
+    /// <summary>
+    /// Configures Galdr to show a loading page on launch.
+    /// </summary>
+    public GaldrBuilder SetLoadingPage(string loadingMessage = "Loading Galdr", string backgroundColor = "#f5f5f5")
+    {
+        _showLoading = true;
+        _loadingMessage = loadingMessage;
+        _loadingBackground = backgroundColor;
         return this;
     }
 
@@ -1567,12 +1591,16 @@ public sealed class GaldrBuilder
         return new Galdr(new GaldrOptions()
         {
             Commands = _commands,
+            ContentProvider = _contentProvider,
             Debug = _debug,
             Height = _height,
+            LoadingBackground = _loadingBackground,
+            LoadingMessage = _loadingMessage,
             MinHeight = _minHeight,
             MinWidth = _minWidth,
             Port = _port,
             Services = _services,
+            ShowLoading = _showLoading,
             Title = _title,
             Width = _width,
         });

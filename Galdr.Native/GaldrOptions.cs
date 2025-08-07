@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Microsoft.Extensions.DependencyInjection;
+using SharpWebview.Content;
 
 namespace Galdr.Native;
 
@@ -52,4 +53,24 @@ public sealed class GaldrOptions
     /// A dictionary mapping a name for use in <c>galdrInvoke</c> with the associated C# method to call.
     /// </summary>
     public Dictionary<string, CommandInfo> Commands { get; init; }
+
+    /// <summary>
+    /// Sets a custom content provider for the webview.
+    /// </summary>
+    public IWebviewContent ContentProvider { get; init; }
+
+    /// <summary>
+    /// A value indicating if a loading screen should be shown on launch.
+    /// </summary>
+    public bool ShowLoading { get; init; }
+
+    /// <summary>
+    /// A message to show on the loading page.
+    /// </summary>
+    public string LoadingMessage { get; init; }
+
+    /// <summary>
+    /// The background color to use on the loading page.
+    /// </summary>
+    public string LoadingBackground { get; init; }
 }

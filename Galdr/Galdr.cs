@@ -82,6 +82,10 @@ public class Galdr : IDisposable
         {
             disposableContent.Dispose();
         }
+        else if (_content is IAsyncDisposable asyncDisposableContent)
+        {
+            asyncDisposableContent.DisposeAsync();
+        }
 
         _webView.Dispose();
     }

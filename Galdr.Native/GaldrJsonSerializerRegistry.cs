@@ -2,11 +2,17 @@
 
 namespace Galdr.Native;
 
+/// <summary>
+/// The serialization registry use to register IGaldrJsonSerializers.
+/// </summary>
 public static class GaldrJsonSerializerRegistry
 {
     private static IGaldrJsonSerializer _serializer;
 
-    // Called by generated code at module initialization
+    /// <summary>
+    /// Registers a new serializer.
+    /// Called by generated code at module initialization
+    /// </summary>
     public static void Register(IGaldrJsonSerializer serializer)
     {
         _serializer = serializer;

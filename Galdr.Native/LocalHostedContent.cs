@@ -12,10 +12,19 @@ using SharpWebview.Content;
 
 namespace Galdr.Native;
 
+/// <summary>
+/// Class used to serve content from a local dist folder.
+/// </summary>
 public sealed class LocalHostedContent : IWebviewContent
 {
     private readonly WebApplication _webApp;
 
+    /// <summary>
+    /// Creates a new instance of the <see cref="LocalHostedContent"/> class.
+    /// </summary>
+    /// <param name="port">The port to serve on (0 for auto-select)</param>
+    /// <param name="activateLog">True if you want to clear logging providers</param>
+    /// <param name="additionalMimeTypes">Additional mime types to add to the file server options.</param>
     public LocalHostedContent(int port = 0, bool activateLog = false, IDictionary<string, string> additionalMimeTypes = null)
     {
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
@@ -51,6 +60,9 @@ public sealed class LocalHostedContent : IWebviewContent
         _webApp.Start();
     }
 
+    /// <summary>
+    /// Returns the URL of the <see cref="WebApplication"/>.
+    /// </summary>
     public string ToWebviewUrl()
     {
         return _webApp.Urls.First().Replace("127.0.0.1", "localhost");

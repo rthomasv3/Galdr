@@ -12,8 +12,10 @@ internal class Program
     {
         GaldrBuilder builder = new GaldrBuilder()
             .SetTitle("Galdr Native Test Harness")
-            .SetSize(1024, 768)
-            .SetMinSize(800, 600);
+            .SetSize(1024, 768) // 640 x 480
+            .SetMinSize(640, 480)
+            .SetLoadingPage(backgroundColor: "#0d0c0c")
+            .SetContentProvider(new EmbeddedContent());
 
 #if DEBUG
         builder.SetPort(42069);
