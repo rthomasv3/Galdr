@@ -68,6 +68,17 @@ internal class Program
             };
         });
 
+        builder.AddFunction("dictionaryTest", (TestMap request) =>
+        {
+            Debug.WriteLine($"dictionaryTest: {request?.Map?.Count}");
+
+            return new TestMap
+            {
+                Id = request.Id,
+                Map = request.Map,
+            };
+        });
+
         using Galdr.Native.Galdr galdr = builder
             .Build()
             .Run();
@@ -102,6 +113,12 @@ public class PrintRequest
 public class PrintResponse
 {
     public bool Success { get; set; }
+}
+
+public class TestMap
+{
+    public Guid Id { get; set;}
+    public Dictionary<string, PrintRequest> Map { get; set; }
 }
 
 public class PrintService()

@@ -102,6 +102,19 @@
         let result4 = await galdrInvoke("commandTest4", { count: 3, request: { id: "9DB5BDD9-1249-41ED-B298-68AE417DD3DB", name: "Print me!" } });
         console.log(result4);
         testResults.value.push(result4);
+
+        let dictionaryTest = {
+            id: "7E58FBFC-46A2-4A03-B518-3F9989E1F1C1",
+            map: {
+                key1: {
+                    id: "1503A7B8-9A3F-40A0-90A0-EE925DAEE122",
+                    name: "dictionary test",
+                }
+            }
+        };
+        let result5 = await galdrInvoke("dictionaryTest", { request: dictionaryTest });
+        console.log(result5);
+        testResults.value.push(result5);
     }
 </script>
 

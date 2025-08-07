@@ -280,6 +280,19 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
         return false;
     }
 
+    private static bool IsDictionaryType(ITypeSymbol typeSymbol)
+    {
+        if (typeSymbol is INamedTypeSymbol namedTypeSymbol)
+        {
+            string fullName = namedTypeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+            return fullName.Contains("System.Collections.Generic.Dictionary<") ||
+                   fullName.Contains("System.Collections.Generic.IDictionary<") ||
+                   fullName.Contains("System.Collections.Generic.IReadOnlyDictionary<");
+        }
+        return false;
+    }
+
     private static ITypeSymbol GetCollectionElementType(ITypeSymbol collectionType)
     {
         // Handle arrays
@@ -289,6 +302,14 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
         // Handle generic collections
         if (collectionType is INamedTypeSymbol namedType && namedType.TypeArguments.Length == 1)
             return namedType.TypeArguments[0];
+
+        return null;
+    }
+
+    private static (ITypeSymbol keyType, ITypeSymbol valueType)? GetDictionaryTypes(ITypeSymbol dictionaryType)
+    {
+        if (dictionaryType is INamedTypeSymbol namedType && namedType.TypeArguments.Length == 2)
+            return (namedType.TypeArguments[0], namedType.TypeArguments[1]);
 
         return null;
     }
@@ -332,6 +353,43 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
                             {
                                 allTypes[elementTypeFullName] = elementTypeInfo;
                                 typesToProcess.Enqueue(elementTypeInfo);
+                            }
+                        }
+                    }
+                }
+                // Handle dictionaries
+                else if (IsDictionaryType(property.TypeSymbol))
+                {
+                    var dictTypes = GetDictionaryTypes(property.TypeSymbol);
+                    if (dictTypes.HasValue)
+                    {
+                        // Handle dictionary key type (if complex)
+                        if (ShouldSerializeType(dictTypes.Value.keyType))
+                        {
+                            string keyTypeFullName = dictTypes.Value.keyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                            if (!allTypes.ContainsKey(keyTypeFullName))
+                            {
+                                TypeInfo keyTypeInfo = ExtractTypeInfo(dictTypes.Value.keyType);
+                                if (keyTypeInfo != null)
+                                {
+                                    allTypes[keyTypeFullName] = keyTypeInfo;
+                                    typesToProcess.Enqueue(keyTypeInfo);
+                                }
+                            }
+                        }
+
+                        // Handle dictionary value type (if complex)
+                        if (ShouldSerializeType(dictTypes.Value.valueType))
+                        {
+                            string valueTypeFullName = dictTypes.Value.valueType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                            if (!allTypes.ContainsKey(valueTypeFullName))
+                            {
+                                TypeInfo valueTypeInfo = ExtractTypeInfo(dictTypes.Value.valueType);
+                                if (valueTypeInfo != null)
+                                {
+                                    allTypes[valueTypeFullName] = valueTypeInfo;
+                                    typesToProcess.Enqueue(valueTypeInfo);
+                                }
                             }
                         }
                     }
@@ -385,6 +443,9 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
 
         // Generate collection helper methods for all element types used in collections
         GenerateCollectionHelpers(sb, allTypes);
+
+        // Generate dictionary helper methods for all element types used in dictionaries
+        GenerateDictionaryHelpers(sb, allTypes);
 
         // Generate converter for each type
         foreach (TypeInfo typeInfo in allTypes)
@@ -497,6 +558,144 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
         sb.AppendLine("            writer.WriteEndArray();");
         sb.AppendLine("        }");
         sb.AppendLine();
+    }
+
+    private static void GenerateDictionaryHelpers(StringBuilder sb, List<TypeInfo> allTypes)
+    {
+        var dictionaryTypesUsed = new HashSet<(string keyType, string valueType)>();
+
+        // Find all dictionary types used
+        foreach (var typeInfo in allTypes)
+        {
+            foreach (var property in typeInfo.Properties)
+            {
+                if (IsDictionaryType(property.TypeSymbol))
+                {
+                    var dictTypes = GetDictionaryTypes(property.TypeSymbol);
+                    if (dictTypes.HasValue)
+                    {
+                        string keyTypeName = dictTypes.Value.keyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                        string valueTypeName = dictTypes.Value.valueType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                        dictionaryTypesUsed.Add((keyTypeName, valueTypeName));
+                    }
+                }
+            }
+        }
+
+        if (dictionaryTypesUsed.Count > 0)
+        {
+            sb.AppendLine("    internal static class DictionaryHelpers");
+            sb.AppendLine("    {");
+
+            foreach (var (keyType, valueType) in dictionaryTypesUsed)
+            {
+                GenerateDictionaryHelperMethods(sb, keyType, valueType);
+            }
+
+            sb.AppendLine("    }");
+            sb.AppendLine();
+        }
+    }
+
+    private static void GenerateDictionaryHelperMethods(StringBuilder sb, string keyTypeName, string valueTypeName)
+    {
+        string safeTypeName = GetSafeTypeName($"{keyTypeName}_{valueTypeName}");
+
+        // Read method
+        sb.AppendLine($"        public static Dictionary<{keyTypeName}, {valueTypeName}>? ReadDictionary_{safeTypeName}(ref Utf8JsonReader reader, JsonSerializerOptions options)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            if (reader.TokenType == JsonTokenType.Null)");
+        sb.AppendLine("                return null;");
+        sb.AppendLine();
+        sb.AppendLine("            if (reader.TokenType != JsonTokenType.StartObject)");
+        sb.AppendLine("                throw new JsonException(\"Expected StartObject token for dictionary\");");
+        sb.AppendLine();
+        sb.AppendLine($"            var dictionary = new Dictionary<{keyTypeName}, {valueTypeName}>();");
+        sb.AppendLine();
+        sb.AppendLine("            while (reader.Read())");
+        sb.AppendLine("            {");
+        sb.AppendLine("                if (reader.TokenType == JsonTokenType.EndObject)");
+        sb.AppendLine("                    break;");
+        sb.AppendLine();
+        sb.AppendLine("                if (reader.TokenType != JsonTokenType.PropertyName)");
+        sb.AppendLine("                    continue;");
+        sb.AppendLine();
+        sb.AppendLine("                var keyString = reader.GetString() ?? string.Empty;");
+
+        // Key conversion logic
+        string keyConversion = GetKeyConversionCode(keyTypeName);
+        sb.AppendLine($"                var key = {keyConversion};");
+
+        sb.AppendLine("                reader.Read();");
+
+        // Value reading logic
+        string valueReadCode = GetElementReadCode(valueTypeName, IsPrimitiveTypeName(valueTypeName), IsSystemTypeName(valueTypeName));
+        sb.AppendLine($"                var value = {valueReadCode};");
+
+        sb.AppendLine("                dictionary[key] = value;");
+        sb.AppendLine("            }");
+        sb.AppendLine();
+        sb.AppendLine("            return dictionary;");
+        sb.AppendLine("        }");
+        sb.AppendLine();
+
+        // Write method
+        sb.AppendLine($"        public static void WriteDictionary_{safeTypeName}(Utf8JsonWriter writer, Dictionary<{keyTypeName}, {valueTypeName}>? dictionary, JsonSerializerOptions options)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            if (dictionary == null)");
+        sb.AppendLine("            {");
+        sb.AppendLine("                writer.WriteNullValue();");
+        sb.AppendLine("                return;");
+        sb.AppendLine("            }");
+        sb.AppendLine();
+        sb.AppendLine("            writer.WriteStartObject();");
+        sb.AppendLine();
+        sb.AppendLine("            foreach (var kvp in dictionary)");
+        sb.AppendLine("            {");
+        sb.AppendLine("                var keyString = kvp.Key?.ToString() ?? string.Empty;");
+        sb.AppendLine("                writer.WritePropertyName(keyString);");
+
+        string valueWriteCode = GetElementWriteCode(valueTypeName, IsPrimitiveTypeName(valueTypeName), IsSystemTypeName(valueTypeName));
+        sb.AppendLine($"                {valueWriteCode.Replace("item", "kvp.Value")}");
+
+        sb.AppendLine("            }");
+        sb.AppendLine();
+        sb.AppendLine("            writer.WriteEndObject();");
+        sb.AppendLine("        }");
+        sb.AppendLine();
+    }
+
+    private static string GetKeyConversionCode(string keyTypeName)
+    {
+        switch (keyTypeName)
+        {
+            case "System.String":
+            case "global::System.String":
+                return "keyString";
+
+            case "System.Int16":
+            case "global::System.Int16":
+                return "short.Parse(keyString)";
+
+            case "System.Int32":
+            case "global::System.Int32":
+                return "int.Parse(keyString)";
+
+            case "System.Int64":
+            case "global::System.Int64":
+                return "long.Parse(keyString)";
+
+            case "System.Guid":
+            case "global::System.Guid":
+                return "Guid.Parse(keyString)";
+
+            case "System.Byte":
+            case "global::System.Byte":
+                return "byte.Parse(keyString)";
+
+            default:
+                return "keyString"; // Default to string for complex key types
+        }
     }
 
     private static bool IsPrimitiveTypeName(string typeName)
@@ -743,6 +942,11 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
             return GenerateCollectionReadCode(property);
         }
 
+        if (IsDictionaryType(property.TypeSymbol))
+        {
+            return GenerateDictionaryReadCode(property);
+        }
+
         // For complex types that we're generating converters for, use the generated converter directly
         string baseTypeName = GetBaseTypeName(property.TypeSymbol);
         string converterName = $"{baseTypeName}JsonConverter";
@@ -766,6 +970,17 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
         bool isArray = property.TypeSymbol.TypeKind == TypeKind.Array;
 
         return $@"({property.Type})CollectionHelpers.ReadCollection_{GetSafeTypeName(elementTypeName)}(ref reader, options, {isArray.ToString().ToLower()})";
+    }
+
+    private static string GenerateDictionaryReadCode(PropertyInfo property)
+    {
+        var dictTypes = GetDictionaryTypes(property.TypeSymbol);
+        if (!dictTypes.HasValue) return "null";
+
+        string keyTypeName = dictTypes.Value.keyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        string valueTypeName = dictTypes.Value.valueType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+        return $"DictionaryHelpers.ReadDictionary_{GetSafeTypeName($"{keyTypeName}_{valueTypeName}")}(ref reader, options)";
     }
 
     private static string GetSafeTypeName(string typeName)
@@ -855,6 +1070,11 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
             return GenerateCollectionWriteCode(property);
         }
 
+        if (IsDictionaryType(property.TypeSymbol))
+        {
+            return GenerateDictionaryWriteCode(property);
+        }
+
         // For complex types that we're generating converters for, use the generated converter directly
         string baseTypeName = GetBaseTypeName(property.TypeSymbol);
         string converterName = $"{baseTypeName}JsonConverter";
@@ -870,6 +1090,18 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
 
         return $@"writer.WritePropertyName(""{property.JsonName}"");
             CollectionHelpers.WriteCollection_{GetSafeTypeName(elementTypeName)}(writer, value.{property.Name}, options);";
+    }
+
+    private static string GenerateDictionaryWriteCode(PropertyInfo property)
+    {
+        var dictTypes = GetDictionaryTypes(property.TypeSymbol);
+        if (!dictTypes.HasValue) return "";
+
+        string keyTypeName = dictTypes.Value.keyType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        string valueTypeName = dictTypes.Value.valueType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+        return $@"writer.WritePropertyName(""{property.JsonName}"");
+            DictionaryHelpers.WriteDictionary_{GetSafeTypeName($"{keyTypeName}_{valueTypeName}")}(writer, value.{property.Name}, options);";
     }
 
     private static void GenerateSerializerImplementation(StringBuilder sb, List<TypeInfo> types)
