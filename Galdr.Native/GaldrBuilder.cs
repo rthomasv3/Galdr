@@ -24,7 +24,7 @@ public sealed class GaldrBuilder
     private int _minHeight = 600;
     private int _port = 0;
     private bool _debug = false;
-    private readonly Dictionary<string, CommandInfo> _commands = new();
+    private Dictionary<string, CommandInfo> _commands = new();
     private IWebviewContent _contentProvider;
     private bool _showLoading;
     private string _loadingMessage;

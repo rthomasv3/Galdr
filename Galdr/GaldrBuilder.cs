@@ -23,6 +23,9 @@ public sealed class GaldrBuilder
     private int _port = 0;
     private bool _debug = false;
     private string _commandNamespace = "Commands";
+    private bool _showLoading;
+    private string _loadingMessage;
+    private string _loadingBackground;
 
     #endregion
 
@@ -99,6 +102,17 @@ public sealed class GaldrBuilder
     }
 
     /// <summary>
+    /// Configures Galdr to show a loading page on launch.
+    /// </summary>
+    public GaldrBuilder SetLoadingPage(string loadingMessage = "Loading Galdr", string backgroundColor = "#f5f5f5")
+    {
+        _showLoading = true;
+        _loadingMessage = loadingMessage;
+        _loadingBackground = backgroundColor;
+        return this;
+    }
+
+    /// <summary>
     /// Adds a service with a transient lifetime to the services collection for use in dependency injection.
     /// </summary>
     public GaldrBuilder AddService<T>() 
@@ -166,10 +180,13 @@ public sealed class GaldrBuilder
             Commands = GetCommands(),
             Debug = _debug,
             Height = _height,
+            LoadingBackground = _loadingBackground,
+            LoadingMessage = _loadingMessage,
             MinHeight = _minHeight,
             MinWidth = _minWidth,
             Port = _port,
             Services = _services,
+            ShowLoading = _showLoading,
             Title = _title,
             Width = _width,
         });

@@ -54,4 +54,19 @@ public sealed class GaldrOptions
     /// A dictionary mapping a name for use in <c>galdrInvoke</c> with the associated C# method to call.
     /// </summary>
     public Dictionary<string, MethodInfo> Commands { get; init; }
+
+    /// <summary>
+    /// A value indicating if a loading screen should be shown on launch.
+    /// </summary>
+    public bool ShowLoading { get; init; }
+
+    /// <summary>
+    /// A message to show on the loading page.
+    /// </summary>
+    public string LoadingMessage { get; init; }
+
+    /// <summary>
+    /// The background color to use on the loading page.
+    /// </summary>
+    public string LoadingBackground { get; init; }
 }

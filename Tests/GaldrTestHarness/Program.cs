@@ -17,6 +17,7 @@ internal class Program
             .AddService<TransientExample>()
             .AddService<CommandExamples>()
             .AddSingleton<TestCommands>()
+            //.SetLoadingPage(loadingMessage: "Loading Galdr Test Harness", backgroundColor: "#0d0c0c")
             .SetCommandNamespace("Commands")
 #if DEBUG
             .SetPort(42069)

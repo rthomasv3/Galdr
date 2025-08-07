@@ -14,7 +14,7 @@ internal class Program
             .SetTitle("Galdr Native Test Harness")
             .SetSize(1024, 768) // 640 x 480
             .SetMinSize(640, 480)
-            .SetLoadingPage(backgroundColor: "#0d0c0c")
+            //.SetLoadingPage(loadingMessage: "Loading Galdr Native Test Harness", backgroundColor: "#0d0c0c")
             .SetContentProvider(new EmbeddedContent());
 
 #if DEBUG
