@@ -1,6 +1,6 @@
 ﻿## Galdr
 
-Galdr is a WIP framework for building multi-platform desktop applications using C#. It's powered by [webview](https://github.com/webview/webview) and compatible with any frontend web framework of your choice.
+Galdr is a framework for building multi-platform desktop applications using C#. It's powered by [webview](https://github.com/webview/webview) and compatible with any frontend web framework of your choice.
 
 Features:
 * Cross-platform (Windows, Linux, macOS)
