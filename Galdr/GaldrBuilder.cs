@@ -34,7 +34,8 @@ public sealed class GaldrBuilder
     public GaldrBuilder()
     {
         _services = new ServiceCollection()
-            .AddSingleton<DialogService>();
+            .AddSingleton<DialogService>()
+            .AddSingleton<IDialogService, DialogService>();
     }
 
     #endregion
