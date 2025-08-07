@@ -126,3 +126,50 @@ Note that trimming can break reflection when classes aren't statically reference
    <TrimmerRootAssembly Include="$(AssemblyName)" />
  </ItemGroup>
 ```
+
+## Galdr.Native
+
+`Galdr.Native` is designed for native AOT support. It has all the same features as `Galdr` with a couple small differences:
+
+Additional Features:
+* Full AOT support
+* Automatic source generation for command request and response JSON serialization
+
+Commands are no longer added using Attributes or a namespace due to AOT constraints. Instead commands are added using the `AddAction` and `AddFunction` methods on `GaldrBuilder`.
+
+Actions and functions support up to 16 parameters. There are no changes to the way commands are called from the frontend code.
+
+### Native Command Examples
+
+```csharp
+// Actions are used for void return types
+builder.AddAction("commandTest1", () =>
+{
+    Debug.WriteLine("Command Test 1!");
+});
+
+// Functions are used when you need to return something from the command
+builder.AddFunction("commandTest3", (int x) =>
+{
+    Debug.WriteLine($"Command Test 3 {x}!");
+
+    return new TestResult { };
+});
+
+// Dependency injection is fully supported
+builder.AddSingleton<PrintService>();
+builder.AddFunction("commandTest4", (int count, PrintRequest request, PrintService printService) =>
+{
+    for (int i = 0; i < count; ++i)
+    {
+        printService.Print(request.Id, request.Name);
+    }
+
+    return new PrintResponse
+    {
+        Success = true,
+    };
+});
+```
+
+Any classes that appear as a return type or parameters for actions/functions are detected on build. Source generation is used to create the needed JSON serializers for these classes. This was designed to be simple and automatic - there is no need for a `JsonSerializerContext` like with minimal APIs.

@@ -25,9 +25,10 @@ internal class Program
             Debug.WriteLine("Command Test 1!");
         });
 
-        builder.AddAction("commandTest2", (int x) =>
+        builder.AddFunction("commandTest2", (int x) =>
         {
             Debug.WriteLine($"Command Test 2 {x}!");
+            return x;
         });
 
         builder.AddFunction("commandTest3", (int x) =>
@@ -53,14 +54,12 @@ internal class Program
         });
 
         builder.AddSingleton<PrintService>();
-        builder.AddFunction("commandTest4", (int count, PrintRequest request, PrintService printService, DialogService dialogService) =>
+        builder.AddFunction("commandTest4", (int count, PrintRequest request, PrintService printService) =>
         {
             for (int i = 0; i < count; ++i)
             {
                 printService.Print(request.Id, request.Name);
             }
-
-            dialogService.OpenFileDialog();
 
             return new PrintResponse
             {

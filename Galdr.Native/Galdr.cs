@@ -94,7 +94,7 @@ public class Galdr : IDisposable
                 }
                 else
                 {
-                    _webView.Return(id, RPCResult.Success, "");
+                    _webView.Return(id, RPCResult.Success, result.ToString());
                 }
             }
         }
