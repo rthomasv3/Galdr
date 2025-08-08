@@ -1586,9 +1586,7 @@ public sealed class GaldrBuilder
     /// </exception>
     public Galdr Build()
     {
-        _serviceProvider = _services.BuildServiceProvider();
-
-        return new Galdr(new GaldrOptions()
+        Galdr galdr = new Galdr(new GaldrOptions()
         {
             Commands = _commands,
             ContentProvider = _contentProvider,
@@ -1604,6 +1602,13 @@ public sealed class GaldrBuilder
             Title = _title,
             Width = _width,
         });
+
+        _serviceProvider = _services
+            .AddSingleton(_ => new EventService(galdr.Webview))
+            .AddSingleton<IEventService, EventService>()
+            .BuildServiceProvider();
+
+        return galdr;
     }
 
     #endregion

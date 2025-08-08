@@ -74,6 +74,12 @@ public class Galdr : IDisposable
 
     #endregion
 
+    #region Properties
+
+    internal Webview Webview => _webView;
+
+    #endregion
+
     #region Public Methods
 
     /// <summary>

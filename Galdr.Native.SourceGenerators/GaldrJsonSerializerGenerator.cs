@@ -700,14 +700,21 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
 
     private static bool IsPrimitiveTypeName(string typeName)
     {
-        return
-            typeName == "System.Int32"      ||
-            typeName == "System.Int64"      ||
-            typeName == "System.Single"     ||
-            typeName == "System.Double"     ||
-            typeName == "System.Boolean"    ||
-            typeName == "System.String"     ||
-            typeName == "System.DateTime";
+        // Remove global:: prefix if present
+        string normalizedTypeName = typeName.StartsWith("global::") ? typeName.Substring(8) : typeName;
+
+        // Handle both full .NET type names and C# aliases
+        return normalizedTypeName == "System.Int32" || normalizedTypeName == "int" ||
+               normalizedTypeName == "System.Int64" || normalizedTypeName == "long" ||
+               normalizedTypeName == "System.Int16" || normalizedTypeName == "short" ||
+               normalizedTypeName == "System.Byte" || normalizedTypeName == "byte" ||
+               normalizedTypeName == "System.Single" || normalizedTypeName == "float" ||
+               normalizedTypeName == "System.Double" || normalizedTypeName == "double" ||
+               normalizedTypeName == "System.Decimal" || normalizedTypeName == "decimal" ||
+               normalizedTypeName == "System.Boolean" || normalizedTypeName == "bool" ||
+               normalizedTypeName == "System.String" || normalizedTypeName == "string" ||
+               normalizedTypeName == "System.DateTime" ||
+               normalizedTypeName == "System.Char" || normalizedTypeName == "char";
     }
 
     private static bool IsSystemTypeName(string typeName)
@@ -720,36 +727,46 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
     {
         if (isPrimitive)
         {
-            string readCode = null;
+            // Remove global:: prefix for comparison
+            string normalizedTypeName = elementTypeName.StartsWith("global::") ? elementTypeName.Substring(8) : elementTypeName;
 
-            switch (elementTypeName)
+            switch (normalizedTypeName)
             {
                 case "System.Int32":
-                    readCode = "reader.GetInt32()";
-                    break;
+                case "int":
+                    return "reader.GetInt32()";
                 case "System.Int64":
-                    readCode = "reader.GetInt64()";
-                    break;
+                case "long":
+                    return "reader.GetInt64()";
+                case "System.Int16":
+                case "short":
+                    return "reader.GetInt16()";
+                case "System.Byte":
+                case "byte":
+                    return "reader.GetByte()";
                 case "System.Single":
-                    readCode = "reader.GetSingle()";
-                    break;
+                case "float":
+                    return "reader.GetSingle()";
                 case "System.Double":
-                    readCode = "reader.GetDouble()";
-                    break;
+                case "double":
+                    return "reader.GetDouble()";
+                case "System.Decimal":
+                case "decimal":
+                    return "reader.GetDecimal()";
                 case "System.Boolean":
-                    readCode = "reader.GetBoolean()";
-                    break;
+                case "bool":
+                    return "reader.GetBoolean()";
                 case "System.String":
-                    readCode = "reader.GetString() ?? string.Empty";
-                    break;
+                case "string":
+                    return "reader.GetString() ?? string.Empty";
                 case "System.DateTime":
-                    readCode = "reader.GetDateTime()";
-                    break;
+                    return "reader.GetDateTime()";
+                case "System.Char":
+                case "char":
+                    return "reader.GetString()?[0] ?? '\\0'";
                 default:
                     throw new NotSupportedException($"Primitive type {elementTypeName} not supported");
             }
-
-            return readCode;
         }
 
         if (isSystemType && elementTypeName.Contains("Guid"))
@@ -767,34 +784,40 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
     {
         if (isPrimitive)
         {
-            string writeCode = null;
+            // Remove global:: prefix for comparison
+            string normalizedTypeName = elementTypeName.StartsWith("global::") ? elementTypeName.Substring(8) : elementTypeName;
 
-            switch (elementTypeName)
+            switch (normalizedTypeName)
             {
                 case "System.Int32":
+                case "int":
                 case "System.Int64":
+                case "long":
+                case "System.Int16":
+                case "short":
+                case "System.Byte":
+                case "byte":
                 case "System.Single":
+                case "float":
                 case "System.Double":
-                    writeCode = "writer.WriteNumberValue(item);";
-                    break;
-
+                case "double":
+                case "System.Decimal":
+                case "decimal":
+                    return "writer.WriteNumberValue(item);";
                 case "System.Boolean":
-                    writeCode = "writer.WriteBooleanValue(item);";
-                    break;
-
+                case "bool":
+                    return "writer.WriteBooleanValue(item);";
                 case "System.String":
-                    writeCode = "writer.WriteStringValue(item);";
-                    break;
-
+                case "string":
+                    return "writer.WriteStringValue(item);";
                 case "System.DateTime":
-                    writeCode = "writer.WriteStringValue(item);";
-                    break;
-
+                    return "writer.WriteStringValue(item);";
+                case "System.Char":
+                case "char":
+                    return "writer.WriteStringValue(item.ToString());";
                 default:
                     throw new NotSupportedException($"Primitive type {elementTypeName} not supported");
             }
-
-            return writeCode;
         }
 
         if (isSystemType && elementTypeName.Contains("Guid"))

@@ -109,6 +109,7 @@ public class PrintRequest
 {
     public Guid Id { get; set;}
     public string Name { get; set; }
+    public IEnumerable<string> StringTest { get; set; }
 }
 
 public class PrintResponse
