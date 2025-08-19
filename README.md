@@ -27,6 +27,20 @@ The setup is pretty straight forward and steps are outlined below - or you can u
     * The entry point to the application requires the `[STAThread]` attribute on Windows.
 7. Optionally set the project as the trim root assembly for smaller binaries (required when trimming due to reflection).
 
+### Linux Prerequisites
+
+Linux support requires `webkit2gtk` and `gtk3`.
+
+With a distribution using apt:
+```
+sudo apt install -y libwebkit2gtk-4.1-dev libgtk-3-dev
+```
+
+With a distribution using dnf:
+```
+sudo dnf install webkit2gtk4.1-devel gtk3-devel
+```
+
 #### Example Main
 
 ```cs
