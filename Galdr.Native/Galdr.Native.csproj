@@ -42,7 +42,7 @@
   
   <ItemGroup>
     <PackageReference Include="NativeFileDialogSharp" Version="0.6.0-alpha" />
-    <PackageReference Include="SharpWebview.Aot" Version="0.11.1" />
+    <PackageReference Include="SharpWebview.Aot" Version="0.11.2" />
   </ItemGroup>
  
   <ItemGroup>
