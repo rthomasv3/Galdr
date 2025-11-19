@@ -73,4 +73,9 @@ public sealed class GaldrOptions
     /// The background color to use on the loading page.
     /// </summary>
     public string LoadingBackground { get; init; }
+
+    /// <summary>
+    /// Languages to enable spell checking for (ex. en_US).
+    /// </summary>
+    public List<string> SpellCheckingLanguages { get; init; }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using SharpWebview;
 using SharpWebview.Content;
@@ -43,8 +44,15 @@ public class Galdr : IDisposable
             new LoadingContent(options.LoadingMessage, options.LoadingBackground) : 
             _mainContent;
 
-        _webView = new Webview(options.Debug, true)
-            .SetTitle(options.Title)
+        _webView = new Webview(options.Debug, true, true);
+
+        if (options.SpellCheckingLanguages?.Count > 0 == true &&
+            RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            SetupSpellChecking(options.SpellCheckingLanguages);
+        }
+
+        _webView.SetTitle(options.Title)
             .Bind("galdrInvoke", HandleCommand)
             .Navigate(loadingContent);
 
@@ -89,6 +97,14 @@ public class Galdr : IDisposable
     {
         _webView.Run();
         return this;
+    }
+
+    /// <summary>
+    /// Gets a pointer to the main window handle.
+    /// </summary>
+    public IntPtr GetWindow()
+    {
+        return _webView.GetWindow();
     }
 
     /// <inheritdoc />
@@ -193,6 +209,94 @@ public class Galdr : IDisposable
             await httpClient.GetAsync(_mainContent.ToWebviewUrl());
         }
         catch { }
+    }
+
+    private void SetupSpellChecking(List<string> languages)
+    {
+        try
+        {
+            IntPtr window = _webView.GetWindow();
+            IntPtr webkitWebView = FindWebKitWebView(window);
+
+            if (webkitWebView != IntPtr.Zero)
+            {
+                // Get the WebKit context
+                IntPtr context = WebKit2GTKBindings.webkit_web_view_get_context(webkitWebView);
+
+                if (context != IntPtr.Zero)
+                {
+                    // Enable spell checking
+                    WebKit2GTKBindings.webkit_web_context_set_spell_checking_enabled(context, true);
+
+                    // Set languages
+                    IntPtr languagesPtr = WebKit2GTKBindings.CreateNullTerminatedStringArray(languages.ToArray());
+
+                    try
+                    {
+                        WebKit2GTKBindings.webkit_web_context_set_spell_checking_languages(context, languagesPtr);
+                    }
+                    finally
+                    {
+                        // Clean up allocated memory
+                        WebKit2GTKBindings.FreeNullTerminatedStringArray(languagesPtr, languages.Count);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Spell checking is non-critical, so we log and continue
+            System.Diagnostics.Debug.WriteLine($"Failed to enable spell checking: {ex.Message}");
+        }
+    }
+
+    private IntPtr FindWebKitWebView(IntPtr widget)
+    {
+        if (widget == IntPtr.Zero)
+            return IntPtr.Zero;
+
+        // Get the type of this widget
+        IntPtr widgetType = GTK3Bindings.G_TYPE_FROM_INSTANCE(widget);
+        IntPtr typeNamePtr = GTK3Bindings.g_type_name(widgetType);
+
+        if (typeNamePtr != IntPtr.Zero)
+        {
+            string typeName = Marshal.PtrToStringAnsi(typeNamePtr);
+
+            // Check if this is the WebKitWebView
+            if (typeName == "WebKitWebView")
+                return widget;
+        }
+
+        // Try as a GtkBin (single child container)
+        IntPtr binChild = GTK3Bindings.gtk_bin_get_child(widget);
+        if (binChild != IntPtr.Zero)
+        {
+            IntPtr found = FindWebKitWebView(binChild);
+            if (found != IntPtr.Zero)
+                return found;
+        }
+
+        // Try as a GtkContainer (multi-child container)
+        IntPtr children = GTK3Bindings.gtk_container_get_children(widget);
+        if (children != IntPtr.Zero)
+        {
+            try
+            {
+                foreach (IntPtr child in GTK3Bindings.IterateGList(children))
+                {
+                    IntPtr found = FindWebKitWebView(child);
+                    if (found != IntPtr.Zero)
+                        return found;
+                }
+            }
+            finally
+            {
+                GTK3Bindings.g_list_free(children);
+            }
+        }
+
+        return IntPtr.Zero;
     }
 
     #endregion

@@ -65,6 +65,6 @@ public sealed class LocalHostedContent : IWebviewContent
     /// </summary>
     public string ToWebviewUrl()
     {
-        return _webApp.Urls.First().Replace("127.0.0.1", "localhost");
+        return _webApp.Urls.First();
     }
 }

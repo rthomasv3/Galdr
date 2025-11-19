@@ -75,7 +75,7 @@ public sealed class EmbeddedContent : IWebviewContent, IAsyncDisposable
     /// </summary>
     public string ToWebviewUrl()
     {
-        return _webApp.Urls.First().Replace("127.0.0.1", "localhost");
+        return _webApp.Urls.First();
     }
 
     #endregion
