@@ -26,6 +26,7 @@ public sealed class GaldrBuilder
     private bool _showLoading;
     private string _loadingMessage;
     private string _loadingBackground;
+    private List<string> _spellCheckLanguages = new();
 
     #endregion
 
@@ -113,6 +114,15 @@ public sealed class GaldrBuilder
     }
 
     /// <summary>
+    /// Enables spellchecking on Linux for the given languages (ex en_US).
+    /// </summary>
+    public GaldrBuilder EnableSpellChecking(params string[] languages)
+    {
+        _spellCheckLanguages = [.. languages];
+        return this;
+    }
+
+    /// <summary>
     /// Adds a service with a transient lifetime to the services collection for use in dependency injection.
     /// </summary>
     public GaldrBuilder AddService<T>() 
@@ -187,6 +197,7 @@ public sealed class GaldrBuilder
             Port = _port,
             Services = _services,
             ShowLoading = _showLoading,
+            SpellCheckingLanguages = _spellCheckLanguages,
             Title = _title,
             Width = _width,
         });
