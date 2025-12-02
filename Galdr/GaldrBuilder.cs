@@ -27,6 +27,7 @@ public sealed class GaldrBuilder
     private string _loadingMessage;
     private string _loadingBackground;
     private List<string> _spellCheckLanguages = new();
+    private string _initScript;
 
     #endregion
 
@@ -123,6 +124,17 @@ public sealed class GaldrBuilder
     }
 
     /// <summary>
+    /// Injects JavaScript code at the initialization of the new page. Every time the
+    /// webview will open a new page, this initialization code will be executed. It is
+    /// guaranteed that code is executed before window.onload.
+    /// </summary>
+    public GaldrBuilder SetInitScript(string script)
+    {
+        _initScript = script;
+        return this;
+    }
+
+    /// <summary>
     /// Adds a service with a transient lifetime to the services collection for use in dependency injection.
     /// </summary>
     public GaldrBuilder AddService<T>() 
@@ -190,6 +202,7 @@ public sealed class GaldrBuilder
             Commands = GetCommands(),
             Debug = _debug,
             Height = _height,
+            InitScript = _initScript,
             LoadingBackground = _loadingBackground,
             LoadingMessage = _loadingMessage,
             MinHeight = _minHeight,

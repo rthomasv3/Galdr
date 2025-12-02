@@ -52,6 +52,11 @@ public class Galdr : IDisposable
             SetupSpellChecking(options.SpellCheckingLanguages);
         }
 
+        if (!String.IsNullOrEmpty(options.InitScript))
+        {
+            _webView.InitScript(options.InitScript);
+        }
+
         _webView.SetTitle(options.Title)
             .Bind("galdrInvoke", HandleCommand)
             .Navigate(loadingContent);
@@ -105,6 +110,24 @@ public class Galdr : IDisposable
     public IntPtr GetWindow()
     {
         return _webView.GetWindow();
+    }
+
+    /// <summary>
+    /// Evaluates arbitrary JavaScript code. Evaluation happens asynchronously, also
+    /// the result of the expression is ignored. Use galdrInvoke if you want to receive
+    /// notifications about the results of the evaluation.
+    /// </summary>
+    public void Evaluate(string javascript)
+    {
+        _webView.Evaluate(javascript);
+    }
+
+    /// <summary>
+    /// Posts a function to be executed on the main thread of the webview.
+    /// </summary>
+    public void Dispatch(Action dispatchFunc)
+    {
+        _webView.Dispatch(dispatchFunc);
     }
 
     /// <inheritdoc />

@@ -78,4 +78,9 @@ public sealed class GaldrOptions
     /// Languages to enable spell checking for (ex. en_US).
     /// </summary>
     public List<string> SpellCheckingLanguages { get; init; }
+
+    /// <summary>
+    /// Injects JavaScript code at the initialization of the new page.
+    /// </summary>
+    public string InitScript { get; init; }
 }
