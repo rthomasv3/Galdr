@@ -74,6 +74,7 @@ public class Galdr : IDisposable
         _serviceProvider = options.Services
             .AddTransient(_ => new EventService(_webView))
             .AddTransient<IEventService, EventService>()
+            .AddSingleton(this)
             .BuildServiceProvider();
 
         _executionService = new(_serviceProvider);

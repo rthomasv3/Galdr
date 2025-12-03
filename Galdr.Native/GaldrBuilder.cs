@@ -47,7 +47,14 @@ public sealed class GaldrBuilder
             .AddSingleton<DialogService>()
             .AddSingleton<IDialogService, DialogService>();
 
-        _registeredServiceTypes = [typeof(DialogService), typeof(IDialogService)];
+        _registeredServiceTypes =
+        [
+            typeof(DialogService), 
+            typeof(IDialogService), 
+            typeof(Galdr), 
+            typeof(EventService),
+            typeof(IEventService),
+        ];
     }
 
     #endregion
@@ -1630,6 +1637,7 @@ public sealed class GaldrBuilder
         _serviceProvider = _services
             .AddSingleton(_ => new EventService(galdr.Webview))
             .AddSingleton<IEventService, EventService>()
+            .AddSingleton(galdr)
             .BuildServiceProvider();
 
         return galdr;
