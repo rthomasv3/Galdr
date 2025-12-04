@@ -508,7 +508,7 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
         bool isSystemType = IsSystemTypeName(elementTypeName);
 
         // Generate Read method
-        sb.AppendLine($"        public static object? ReadCollection_{safeTypeName}(ref Utf8JsonReader reader, JsonSerializerOptions options, bool isArray)");
+        sb.AppendLine($"        public static object ReadCollection_{safeTypeName}(ref Utf8JsonReader reader, JsonSerializerOptions options, bool isArray)");
         sb.AppendLine("        {");
         sb.AppendLine("            if (reader.TokenType == JsonTokenType.Null)");
         sb.AppendLine("                return null;");
@@ -536,7 +536,7 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
         sb.AppendLine();
 
         // Generate Write method
-        sb.AppendLine($"        public static void WriteCollection_{safeTypeName}(Utf8JsonWriter writer, object? collection, JsonSerializerOptions options)");
+        sb.AppendLine($"        public static void WriteCollection_{safeTypeName}(Utf8JsonWriter writer, object collection, JsonSerializerOptions options)");
         sb.AppendLine("        {");
         sb.AppendLine("            if (collection == null)");
         sb.AppendLine("            {");
@@ -602,7 +602,7 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
         string safeTypeName = GetSafeTypeName($"{keyTypeName}_{valueTypeName}");
 
         // Read method
-        sb.AppendLine($"        public static Dictionary<{keyTypeName}, {valueTypeName}>? ReadDictionary_{safeTypeName}(ref Utf8JsonReader reader, JsonSerializerOptions options)");
+        sb.AppendLine($"        public static Dictionary<{keyTypeName}, {valueTypeName}> ReadDictionary_{safeTypeName}(ref Utf8JsonReader reader, JsonSerializerOptions options)");
         sb.AppendLine("        {");
         sb.AppendLine("            if (reader.TokenType == JsonTokenType.Null)");
         sb.AppendLine("                return null;");
@@ -640,7 +640,7 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
         sb.AppendLine();
 
         // Write method
-        sb.AppendLine($"        public static void WriteDictionary_{safeTypeName}(Utf8JsonWriter writer, Dictionary<{keyTypeName}, {valueTypeName}>? dictionary, JsonSerializerOptions options)");
+        sb.AppendLine($"        public static void WriteDictionary_{safeTypeName}(Utf8JsonWriter writer, Dictionary<{keyTypeName}, {valueTypeName}> dictionary, JsonSerializerOptions options)");
         sb.AppendLine("        {");
         sb.AppendLine("            if (dictionary == null)");
         sb.AppendLine("            {");
@@ -846,7 +846,7 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
         sb.AppendLine("    {");
 
         // Generate Read method
-        sb.AppendLine($"        public override {typeName}? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)");
+        sb.AppendLine($"        public override {typeName} Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)");
         sb.AppendLine("        {");
         sb.AppendLine("            if (reader.TokenType == JsonTokenType.Null)");
         sb.AppendLine("                return null;");
@@ -1168,7 +1168,7 @@ public class GaldrJsonSerializerGenerator : IIncrementalGenerator
         sb.AppendLine("        }");
         sb.AppendLine();
 
-        sb.AppendLine("        public object? Deserialize(string json, Type type)");
+        sb.AppendLine("        public object Deserialize(string json, Type type)");
         sb.AppendLine("        {");
         sb.AppendLine("            var bytes = System.Text.Encoding.UTF8.GetBytes(json);");
         sb.AppendLine("            var reader = new Utf8JsonReader(bytes);");
