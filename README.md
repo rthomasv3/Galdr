@@ -9,7 +9,7 @@ Features:
 * Hot-reload
 * Native file system integration
 * Single file executable
-* Reasonable binary size (POC is 26MB)
+* Small deliverable binary size (as low as 6.8MB compressed)
 * Dependency injection
 
 ![POC Screenshot](https://raw.githubusercontent.com/rthomasv3/Galdr/master/Galdr/screenshot.png)
