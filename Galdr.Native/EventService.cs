@@ -1,10 +1,12 @@
-﻿using SharpWebview;
+﻿using GaldrJson;
+using SharpWebview;
 
 namespace Galdr.Native;
 
 /// <summary>
 /// Class used to dispatch events on the frontend.
 /// </summary>
+[GaldrJsonIgnore]
 public sealed class EventService : IEventService
 {
     #region Fields

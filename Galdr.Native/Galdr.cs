@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using GaldrJson;
 using SharpWebview;
 using SharpWebview.Content;
 
@@ -11,12 +12,15 @@ namespace Galdr.Native;
 /// <summary>
 /// Class used to create a <see cref="Webview"/> and handle interactions between the frontend and backend.
 /// </summary>
+[GaldrJsonIgnore]
 public class Galdr : IDisposable
 {
     #region Fields
 
     private readonly Webview _webView;
     private readonly Dictionary<string, CommandInfo> _commands;
+    private readonly IGaldrJsonSerializer _galdrJsonSerializer;
+    private readonly GaldrJsonOptions _galdrJsonOptions;
     private readonly IWebviewContent _mainContent;
 
     #endregion
@@ -37,6 +41,9 @@ public class Galdr : IDisposable
     public Galdr(GaldrOptions options)
     {
         _commands = options.Commands;
+
+        _galdrJsonSerializer = options.GaldrJsonSerializer;
+        _galdrJsonOptions = options.GaldrJsonOptions;
 
         _mainContent = options.ContentProvider ?? new LocalHostedContent(options.Port);
 
@@ -163,7 +170,7 @@ public class Galdr : IDisposable
             }
             else
             {
-                if (GaldrJsonSerializerRegistry.TrySerialize(result, commandInfo.ResultType, out string json))
+                if (_galdrJsonSerializer.TrySerialize(result, commandInfo.ResultType, out string json, _galdrJsonOptions))
                 {
                     _webView.Return(id, RPCResult.Success, json);
                 }

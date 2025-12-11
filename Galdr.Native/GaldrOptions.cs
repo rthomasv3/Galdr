@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using GaldrJson;
 using Microsoft.Extensions.DependencyInjection;
 using SharpWebview.Content;
 
@@ -83,4 +84,14 @@ public sealed class GaldrOptions
     /// Injects JavaScript code at the initialization of the new page.
     /// </summary>
     public string InitScript { get; init; }
+
+    /// <summary>
+    /// The JSON serializer used for Galdr-specific serialization operations.
+    /// </summary>
+    internal IGaldrJsonSerializer GaldrJsonSerializer { get; init; }
+
+    /// <summary>
+    /// The JSON serialization options used in the serialization and deserialization process.
+    /// </summary>
+    internal GaldrJsonOptions GaldrJsonOptions { get; init; }
 }

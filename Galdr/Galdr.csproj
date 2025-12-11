@@ -5,7 +5,7 @@
 		<Description>A multi-platform desktop app framework for C#.</Description>
 		<Copyright>Copyright © Robert Thomas 2025</Copyright>
 		<LangVersion>latest</LangVersion>
-		<VersionPrefix>1.0.8</VersionPrefix>
+		<VersionPrefix>1.1.0</VersionPrefix>
 		<Authors>Robert Thomas</Authors>
 		<RepositoryUrl>https://github.com/rthomasv3/Galdr</RepositoryUrl>
 		<PackageIcon>wizard-round-128.png</PackageIcon>

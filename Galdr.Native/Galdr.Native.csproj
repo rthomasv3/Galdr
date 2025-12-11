@@ -1,12 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net9.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
     <PublishAot>true</PublishAot>
     <Description>A multi-platform desktop app framework for C#.</Description>
     <Copyright>Copyright © Robert Thomas 2025</Copyright>
     <LangVersion>latest</LangVersion>
-    <VersionPrefix>1.0.8</VersionPrefix>
+    <VersionPrefix>1.1.0</VersionPrefix>
     <Authors>Robert Thomas</Authors>
     <RepositoryUrl>https://github.com/rthomasv3/Galdr</RepositoryUrl>
     <PackageIcon>wizard-round-128.png</PackageIcon>
@@ -41,15 +41,9 @@
   </ItemGroup>
   
   <ItemGroup>
+    <PackageReference Include="GaldrJson" Version="1.0.1" />
     <PackageReference Include="NativeFileDialogSharp" Version="0.6.0-alpha" />
     <PackageReference Include="SharpWebview.Aot" Version="0.12.1" />
   </ItemGroup>
- 
-  <ItemGroup>
-    <ProjectReference Include="..\Galdr.Native.SourceGenerators\Galdr.Native.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <None Include="..\Galdr.Native.SourceGenerators\bin\$(Configuration)\netstandard2.0\Galdr.Native.SourceGenerators.dll" Pack="true" PackagePath="analyzers/dotnet/cs" />
-  </ItemGroup>
+
 </Project>

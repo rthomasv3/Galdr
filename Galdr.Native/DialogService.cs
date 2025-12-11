@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using GaldrJson;
 using NativeFileDialogSharp;
 
 namespace Galdr.Native;
@@ -6,6 +7,7 @@ namespace Galdr.Native;
 /// <summary>
 /// Class used to provide access to native system dialogs.
 /// </summary>
+[GaldrJsonIgnore]
 public sealed class DialogService : IDialogService
 {
     /// <inheritdoc />

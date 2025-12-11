@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
+using GaldrJson;
 using Microsoft.Extensions.DependencyInjection;
 using SharpWebview.Content;
 
@@ -14,6 +15,8 @@ public sealed class GaldrBuilder
 {
     #region Fields
 
+    private readonly IGaldrJsonSerializer _galdrJsonSerializer;
+    private readonly GaldrJsonOptions _galdrJsonOptions;
     private readonly IServiceCollection _services;
     private readonly HashSet<Type> _registeredServiceTypes;
 
@@ -43,9 +46,19 @@ public sealed class GaldrBuilder
     /// </summary>
     public GaldrBuilder()
     {
+        _galdrJsonSerializer = new GaldrJsonSerializer();
+
+        _galdrJsonOptions = new GaldrJsonOptions()
+        {
+            PropertyNamingPolicy = PropertyNamingPolicy.CamelCase,
+            WriteIndented = false,
+        };
+
         _services = new ServiceCollection()
             .AddSingleton<DialogService>()
-            .AddSingleton<IDialogService, DialogService>();
+            .AddSingleton<IDialogService>(sp => sp.GetRequiredService<DialogService>())
+            .AddSingleton((GaldrJsonSerializer)_galdrJsonSerializer)
+            .AddSingleton<IGaldrJsonSerializer>(sp => sp.GetRequiredService<GaldrJsonSerializer>());
 
         _registeredServiceTypes =
         [
@@ -54,6 +67,8 @@ public sealed class GaldrBuilder
             typeof(Galdr), 
             typeof(EventService),
             typeof(IEventService),
+            typeof(GaldrJsonSerializer),
+            typeof(IGaldrJsonSerializer),
         ];
     }
 
@@ -1620,6 +1635,8 @@ public sealed class GaldrBuilder
             Commands = _commands,
             ContentProvider = _contentProvider,
             Debug = _debug,
+            GaldrJsonOptions = _galdrJsonOptions,
+            GaldrJsonSerializer = _galdrJsonSerializer,
             Height = _height,
             InitScript = _initScript,
             LoadingBackground = _loadingBackground,
@@ -1827,7 +1844,7 @@ public sealed class GaldrBuilder
     {
         try
         {
-            return GaldrJsonSerializerRegistry.TryDeserialize(jsonValue, targetType, out result);
+            return _galdrJsonSerializer.TryDeserialize(jsonValue, targetType, out result, _galdrJsonOptions);
         }
         catch
         {
