@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
-using SharpWebview.Content;
 
 namespace Galdr.Native;
 

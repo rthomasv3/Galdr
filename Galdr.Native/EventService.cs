@@ -1,5 +1,4 @@
 ﻿using GaldrJson;
-using SharpWebview;
 
 namespace Galdr.Native;
 
@@ -11,13 +10,13 @@ public sealed class EventService : IEventService
 {
     #region Fields
 
-    private readonly Webview _webView;
+    private readonly GaldrWebview _webView;
 
     #endregion
 
     #region Constructor
 
-    internal EventService(Webview webview)
+    internal EventService(GaldrWebview webview)
     {
         _webView = webview;
     }

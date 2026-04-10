@@ -4,7 +4,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using GaldrJson;
 using Microsoft.Extensions.DependencyInjection;
-using SharpWebview.Content;
 
 namespace Galdr.Native;
 

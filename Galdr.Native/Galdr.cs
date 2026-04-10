@@ -4,8 +4,6 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using GaldrJson;
-using SharpWebview;
-using SharpWebview.Content;
 
 namespace Galdr.Native;
 
@@ -17,11 +15,12 @@ public class Galdr : IDisposable
 {
     #region Fields
 
-    private readonly Webview _webView;
+    private readonly GaldrWebview _webView;
     private readonly Dictionary<string, CommandInfo> _commands;
     private readonly IGaldrJsonSerializer _galdrJsonSerializer;
     private readonly GaldrJsonOptions _galdrJsonOptions;
     private readonly IWebviewContent _mainContent;
+    private readonly bool _debug;
 
     #endregion
 
@@ -41,6 +40,7 @@ public class Galdr : IDisposable
     public Galdr(GaldrOptions options)
     {
         _commands = options.Commands;
+        _debug = options.Debug;
 
         _galdrJsonSerializer = options.GaldrJsonSerializer;
         _galdrJsonOptions = options.GaldrJsonOptions;
@@ -51,7 +51,7 @@ public class Galdr : IDisposable
             new LoadingContent(options.LoadingMessage, options.LoadingBackground) : 
             _mainContent;
 
-        _webView = new Webview(options.Debug, true, true);
+        _webView = new GaldrWebview(options.Debug, true);
 
         if (options.SpellCheckingLanguages?.Count > 0 == true &&
             RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
@@ -64,9 +64,21 @@ public class Galdr : IDisposable
             _webView.InitScript(options.InitScript);
         }
 
+        bool handlesNavigation = false;
+
+        if (_mainContent is IWebviewContentSetup setupContent)
+        {
+            setupContent.Setup(_webView);
+            handlesNavigation = setupContent.HandlesNavigation;
+        }
+
         _webView.SetTitle(options.Title)
-            .Bind("galdrInvoke", HandleCommand)
-            .Navigate(loadingContent);
+            .Bind("galdrInvoke", HandleCommand);
+
+        if (!handlesNavigation)
+        {
+            _webView.Navigate(loadingContent);
+        }
 
         if (options.ShowLoading)
         {
@@ -96,7 +108,7 @@ public class Galdr : IDisposable
 
     #region Properties
 
-    internal Webview Webview => _webView;
+    internal GaldrWebview Webview => _webView;
 
     #endregion
 
@@ -117,6 +129,14 @@ public class Galdr : IDisposable
     public IntPtr GetWindow()
     {
         return _webView.GetWindow();
+    }
+
+    /// <summary>
+    /// Gets a native handle of the given kind from the underlying webview.
+    /// </summary>
+    public IntPtr GetNativeHandle(WebviewNativeHandleKind kind)
+    {
+        return _webView.GetNativeHandle(kind);
     }
 
     /// <summary>
@@ -158,27 +178,35 @@ public class Galdr : IDisposable
 
     private async void HandleCommand(string id, string paramString)
     {
-        (string commandName, string parameters) = ExtractCommandAndArguments(paramString);
-
-        if (_commands.TryGetValue(commandName, out var commandInfo))
+        try
         {
-            object result = await commandInfo.Handler(parameters);
+            (string commandName, string parameters) = ExtractCommandAndArguments(paramString);
 
-            if (result == null)
+            if (_commands.TryGetValue(commandName, out var commandInfo))
             {
-                _webView.Return(id, RPCResult.Success, "");
-            }
-            else
-            {
-                if (_galdrJsonSerializer.TrySerialize(result, commandInfo.ResultType, out string json, _galdrJsonOptions))
+                object result = await commandInfo.Handler(parameters);
+
+                if (result == null)
                 {
-                    _webView.Return(id, RPCResult.Success, json);
+                    _webView.Return(id, RPCResult.Success, "");
                 }
                 else
                 {
-                    _webView.Return(id, RPCResult.Success, result.ToString());
+                    if (_galdrJsonSerializer.TrySerialize(result, commandInfo.ResultType, out string json, _galdrJsonOptions))
+                    {
+                        _webView.Return(id, RPCResult.Success, json);
+                    }
+                    else
+                    {
+                        _webView.Return(id, RPCResult.Success, result.ToString());
+                    }
                 }
             }
+        }
+        catch (Exception ex)
+        {
+            string message = _debug ? ex.ToString() : ex.Message;
+            _webView.Return(id, RPCResult.Error, message);
         }
     }
 

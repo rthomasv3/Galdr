@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using GaldrJson;
 using Microsoft.Extensions.DependencyInjection;
-using SharpWebview.Content;
 
 namespace Galdr.Native;
 

@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using SharpWebview.Content;
 
 namespace Galdr.Native;
 

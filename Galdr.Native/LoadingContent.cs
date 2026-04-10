@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Text;
-using SharpWebview.Content;
 
 namespace Galdr.Native;
 

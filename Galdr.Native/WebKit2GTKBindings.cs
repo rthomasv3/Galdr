@@ -35,6 +35,21 @@ internal static class WebKit2GTKBindings
         IntPtr languages);
 
     /// <summary>
+    /// Gets the WebKitSettings for a WebKitWebView.
+    /// </summary>
+    [DllImport(WebKit2Lib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr webkit_web_view_get_settings(IntPtr webView);
+
+    /// <summary>
+    /// Sets the allow-file-access-from-file-urls property on WebKitSettings via GObject.
+    /// </summary>
+    [DllImport("libgobject-2.0.so.0", CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void g_object_set(IntPtr obj,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string propertyName,
+        [MarshalAs(UnmanagedType.Bool)] bool value,
+        IntPtr nullTerminator);
+
+    /// <summary>
     /// Helper to convert string array to null-terminated char** for WebKit.
     /// </summary>
     internal static IntPtr CreateNullTerminatedStringArray(string[] languages)
