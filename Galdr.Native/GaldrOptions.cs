@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using GaldrJson;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -93,4 +94,42 @@ public sealed class GaldrOptions
     /// The JSON serialization options used in the serialization and deserialization process.
     /// </summary>
     internal GaldrJsonOptions GaldrJsonOptions { get; init; }
+
+    /// <summary>
+    /// If set, the app will enforce that only one instance runs per machine-user. A duplicate
+    /// launch notifies the primary (which focuses its window and fires <see cref="SecondInstance"/>)
+    /// and exits without creating a webview.
+    /// </summary>
+    public string SingleInstanceAppId { get; init; }
+
+    /// <summary>
+    /// Runs in the primary process before the webview is constructed or services are built.
+    /// Use for work that must precede UI init (e.g. database migrations, file prep).
+    /// </summary>
+    public Action BeforeStartup { get; init; }
+
+    /// <summary>
+    /// Runs in the primary process after services are built and the webview is constructed,
+    /// but before the main loop starts. <see cref="Galdr.GetWindow"/> is valid here.
+    /// </summary>
+    public Action<IServiceProvider> Startup { get; init; }
+
+    /// <summary>
+    /// Dispatched onto the UI thread after the main loop has started.
+    /// </summary>
+    public Action<IServiceProvider> AfterStartup { get; init; }
+
+    /// <summary>
+    /// Runs in the primary process (on the UI thread) when a duplicate launch is detected.
+    /// The window has already been focused by the time this fires. Arguments are the command-line
+    /// args of the duplicate process; cwd is its current working directory.
+    /// </summary>
+    public Action<string[], string> SecondInstance { get; init; }
+
+    /// <summary>
+    /// Mutable bridge that carries the service provider built inside <see cref="Galdr.Run"/>
+    /// back to the builder's command-parameter resolver. Populated by Galdr after the
+    /// provider is built; consumed by command handlers captured at registration time.
+    /// </summary>
+    internal ServiceProviderAccessor ServiceProviderAccessor { get; init; }
 }

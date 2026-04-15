@@ -80,4 +80,16 @@ internal static class GTK3Bindings
     /// </summary>
     [DllImport(GLibLib, CallingConvention = CallingConvention.Cdecl)]
     internal static extern void g_list_free(IntPtr list);
+
+    /// <summary>
+    /// Presents a window to the user, raising it to the top and (on supporting compositors) activating it.
+    /// </summary>
+    [DllImport(GTK3Lib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void gtk_window_present(IntPtr window);
+
+    /// <summary>
+    /// Asks to un-minimize the given window; the window manager may or may not honor the request.
+    /// </summary>
+    [DllImport(GTK3Lib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void gtk_window_deiconify(IntPtr window);
 }

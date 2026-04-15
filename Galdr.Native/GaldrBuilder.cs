@@ -18,6 +18,7 @@ public sealed class GaldrBuilder
     private readonly GaldrJsonOptions _galdrJsonOptions;
     private readonly IServiceCollection _services;
     private readonly HashSet<Type> _registeredServiceTypes;
+    private readonly ServiceProviderAccessor _serviceProviderAccessor;
 
     private string _title = "Galdr";
     private int _width = 1024;
@@ -34,7 +35,11 @@ public sealed class GaldrBuilder
     private List<string> _spellCheckLanguages = new();
     private string _initScript;
 
-    private IServiceProvider _serviceProvider;
+    private string _singleInstanceAppId;
+    private Action _beforeStartup;
+    private Action<IServiceProvider> _startup;
+    private Action<IServiceProvider> _afterStartup;
+    private Action<string[], string> _secondInstance;
 
     #endregion
 
@@ -46,6 +51,7 @@ public sealed class GaldrBuilder
     public GaldrBuilder()
     {
         _galdrJsonSerializer = new GaldrJsonSerializer();
+        _serviceProviderAccessor = new ServiceProviderAccessor();
 
         _galdrJsonOptions = new GaldrJsonOptions()
         {
@@ -159,6 +165,62 @@ public sealed class GaldrBuilder
     public GaldrBuilder SetInitScript(string script)
     {
         _initScript = script;
+        return this;
+    }
+
+    /// <summary>
+    /// Enforces that only one instance of this application runs per machine-user. The
+    /// <paramref name="appId"/> scopes the lock and IPC pipe and should be unique to your app
+    /// (e.g. "vellerune"). A duplicate launch notifies the primary (focusing its window and
+    /// firing <see cref="OnSecondInstance"/>) and exits before any webview or service setup runs.
+    /// </summary>
+    public GaldrBuilder UseSingleInstance(string appId)
+    {
+        _singleInstanceAppId = appId;
+        return this;
+    }
+
+    /// <summary>
+    /// Registers work to run in the primary process before the webview is constructed or
+    /// services are built. Use for DB migrations, filesystem prep, or anything that must
+    /// precede UI init. Not invoked in duplicate processes.
+    /// </summary>
+    public GaldrBuilder OnBeforeStartup(Action handler)
+    {
+        _beforeStartup = handler;
+        return this;
+    }
+
+    /// <summary>
+    /// Registers work to run in the primary process after services are built and the webview
+    /// is constructed, but before the main loop starts. The window handle is valid here.
+    /// Not invoked in duplicate processes.
+    /// </summary>
+    public GaldrBuilder OnStartup(Action<IServiceProvider> handler)
+    {
+        _startup = handler;
+        return this;
+    }
+
+    /// <summary>
+    /// Registers work to dispatch onto the UI thread immediately after the main loop starts.
+    /// Useful for post-launch async work (update checks, background tasks). Not invoked in
+    /// duplicate processes.
+    /// </summary>
+    public GaldrBuilder OnAfterStartup(Action<IServiceProvider> handler)
+    {
+        _afterStartup = handler;
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a handler that fires in the primary process when a duplicate launch is
+    /// detected. Runs on the UI thread after the window has been focused. Receives the
+    /// command-line args and cwd of the duplicate process.
+    /// </summary>
+    public GaldrBuilder OnSecondInstance(Action<string[], string> handler)
+    {
+        _secondInstance = handler;
         return this;
     }
 
@@ -1629,7 +1691,7 @@ public sealed class GaldrBuilder
     /// </exception>
     public Galdr Build()
     {
-        Galdr galdr = new Galdr(new GaldrOptions()
+        return new Galdr(new GaldrOptions()
         {
             Commands = _commands,
             ContentProvider = _contentProvider,
@@ -1648,15 +1710,13 @@ public sealed class GaldrBuilder
             SpellCheckingLanguages = _spellCheckLanguages,
             Title = _title,
             Width = _width,
+            SingleInstanceAppId = _singleInstanceAppId,
+            BeforeStartup = _beforeStartup,
+            Startup = _startup,
+            AfterStartup = _afterStartup,
+            SecondInstance = _secondInstance,
+            ServiceProviderAccessor = _serviceProviderAccessor,
         });
-
-        _serviceProvider = _services
-            .AddSingleton(_ => new EventService(galdr.Webview))
-            .AddSingleton<IEventService, EventService>()
-            .AddSingleton(galdr)
-            .BuildServiceProvider();
-
-        return galdr;
     }
 
     #endregion
@@ -1688,7 +1748,7 @@ public sealed class GaldrBuilder
             if (_registeredServiceTypes.Contains(parameterTypes[i]))
             {
                 // Resolve from DI
-                args[i] = _serviceProvider.GetRequiredService(parameterTypes[i]);
+                args[i] = _serviceProviderAccessor.Provider.GetRequiredService(parameterTypes[i]);
             }
             else
             {
