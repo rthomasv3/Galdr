@@ -176,6 +176,13 @@ public sealed class GaldrBuilder
     /// </summary>
     public GaldrBuilder UseSingleInstance(string appId)
     {
+        if (!IsValidAppId(appId))
+        {
+            throw new ArgumentException(
+                "appId must be 1-63 characters, ASCII alphanumerics plus '_' or '-', and start with a letter or digit.",
+                nameof(appId));
+        }
+
         _singleInstanceAppId = appId;
         return this;
     }
@@ -1722,6 +1729,35 @@ public sealed class GaldrBuilder
     #endregion
 
     #region Private Methods
+
+    private static bool IsValidAppId(string appId)
+    {
+        bool valid = false;
+
+        if (!String.IsNullOrEmpty(appId) && appId.Length <= 63)
+        {
+            char first = appId[0];
+            bool firstOk = (first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || (first >= '0' && first <= '9');
+
+            if (firstOk)
+            {
+                valid = true;
+
+                for (int i = 1; i < appId.Length; i++)
+                {
+                    char c = appId[i];
+                    bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
+
+                    if (!ok)
+                    {
+                        valid = false;
+                    }
+                }
+            }
+        }
+
+        return valid;
+    }
 
     private static int SkipToValue(string content, int start)
     {

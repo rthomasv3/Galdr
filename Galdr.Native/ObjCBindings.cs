@@ -36,6 +36,9 @@ internal static class ObjCBindings
     [DllImport(ObjCLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "objc_msgSend")]
     internal static extern long objc_msgSend_long(IntPtr receiver, IntPtr selector);
 
+    [DllImport(ObjCLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "objc_msgSend")]
+    internal static extern void objc_msgSend_bool_IntPtr_void(IntPtr receiver, IntPtr selector, [MarshalAs(UnmanagedType.U1)] bool arg1, IntPtr arg2);
+
     /// <summary>
     /// Creates an NSString from a C# string.
     /// </summary>

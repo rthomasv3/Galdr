@@ -177,10 +177,16 @@ public class Galdr : IDisposable
 
         _webView = new GaldrWebview(_options.Debug, true);
 
-        if (_options.SpellCheckingLanguages?.Count > 0 == true &&
-            RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        if (_options.SpellCheckingLanguages?.Count > 0 == true)
         {
-            SetupSpellChecking(_options.SpellCheckingLanguages);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                SetupSpellCheckingLinux(_options.SpellCheckingLanguages);
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                SetupSpellCheckingMac();
+            }
         }
 
         if (!String.IsNullOrEmpty(_options.InitScript))
@@ -338,7 +344,7 @@ public class Galdr : IDisposable
         catch { }
     }
 
-    private void SetupSpellChecking(List<string> languages)
+    private void SetupSpellCheckingLinux(List<string> languages)
     {
         try
         {
@@ -424,6 +430,34 @@ public class Galdr : IDisposable
         }
 
         return IntPtr.Zero;
+    }
+
+    private void SetupSpellCheckingMac()
+    {
+        try
+        {
+            IntPtr nsUserDefaultsClass = ObjCBindings.objc_getClass("NSUserDefaults");
+            IntPtr standardSel = ObjCBindings.sel_registerName("standardUserDefaults");
+            IntPtr defaults = ObjCBindings.objc_msgSend_IntPtr(nsUserDefaultsClass, standardSel);
+
+            IntPtr setBoolSel = ObjCBindings.sel_registerName("setBool:forKey:");
+
+            IntPtr continuousKey = ObjCBindings.CreateNSString("WebContinuousSpellCheckingEnabled");
+            ObjCBindings.objc_msgSend_bool_IntPtr_void(defaults, setBoolSel, true, continuousKey);
+            ObjCBindings.ReleaseNSObject(continuousKey);
+
+            IntPtr grammarKey = ObjCBindings.CreateNSString("WebGrammarCheckingEnabled");
+            ObjCBindings.objc_msgSend_bool_IntPtr_void(defaults, setBoolSel, true, grammarKey);
+            ObjCBindings.ReleaseNSObject(grammarKey);
+
+            IntPtr autocorrectKey = ObjCBindings.CreateNSString("WebAutomaticSpellingCorrectionEnabled");
+            ObjCBindings.objc_msgSend_bool_IntPtr_void(defaults, setBoolSel, false, autocorrectKey);
+            ObjCBindings.ReleaseNSObject(autocorrectKey);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to enable Mac spell checking: {ex.Message}");
+        }
     }
 
     #endregion
