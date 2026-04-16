@@ -39,6 +39,7 @@ public sealed class GaldrBuilder
     private Action _beforeStartup;
     private Action<IServiceProvider> _startup;
     private Action<IServiceProvider> _afterStartup;
+    private Action<Galdr> _beforeClose;
     private Action<string[], string> _secondInstance;
 
     #endregion
@@ -60,16 +61,14 @@ public sealed class GaldrBuilder
         };
 
         _services = new ServiceCollection()
-            .AddSingleton<DialogService>()
-            .AddSingleton<IDialogService>(sp => sp.GetRequiredService<DialogService>())
             .AddSingleton((GaldrJsonSerializer)_galdrJsonSerializer)
             .AddSingleton<IGaldrJsonSerializer>(sp => sp.GetRequiredService<GaldrJsonSerializer>());
 
         _registeredServiceTypes =
         [
-            typeof(DialogService), 
-            typeof(IDialogService), 
-            typeof(Galdr), 
+            typeof(DialogService),
+            typeof(IDialogService),
+            typeof(Galdr),
             typeof(EventService),
             typeof(IEventService),
             typeof(GaldrJsonSerializer),
@@ -217,6 +216,19 @@ public sealed class GaldrBuilder
     public GaldrBuilder OnAfterStartup(Action<IServiceProvider> handler)
     {
         _afterStartup = handler;
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a handler that fires when the user attempts to close the window. The close
+    /// is cancelled automatically — the handler must call <see cref="Galdr.Terminate"/> to
+    /// actually close the application. The <see cref="Galdr"/> instance is passed to the handler
+    /// for convenience. This enables async save patterns: dispatch JS, wait for a frontend
+    /// callback, then terminate.
+    /// </summary>
+    public GaldrBuilder OnBeforeClose(Action<Galdr> handler)
+    {
+        _beforeClose = handler;
         return this;
     }
 
@@ -1721,6 +1733,7 @@ public sealed class GaldrBuilder
             BeforeStartup = _beforeStartup,
             Startup = _startup,
             AfterStartup = _afterStartup,
+            BeforeClose = _beforeClose,
             SecondInstance = _secondInstance,
             ServiceProviderAccessor = _serviceProviderAccessor,
         });

@@ -39,6 +39,38 @@ internal static class ObjCBindings
     [DllImport(ObjCLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "objc_msgSend")]
     internal static extern void objc_msgSend_bool_IntPtr_void(IntPtr receiver, IntPtr selector, [MarshalAs(UnmanagedType.U1)] bool arg1, IntPtr arg2);
 
+    [DllImport(ObjCLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "objc_msgSend")]
+    internal static extern IntPtr objc_msgSend_IntPtr_IntPtr_IntPtr(IntPtr receiver, IntPtr selector, IntPtr arg1, IntPtr arg2);
+
+    [DllImport(ObjCLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "objc_msgSend")]
+    internal static extern IntPtr objc_msgSend_IntPtr_IntPtr_IntPtr_IntPtr(IntPtr receiver, IntPtr selector, IntPtr arg1, IntPtr arg2, IntPtr arg3);
+
+    [DllImport(ObjCLib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr objc_allocateClassPair(IntPtr superclass, [MarshalAs(UnmanagedType.LPUTF8Str)] string name, IntPtr extraBytes);
+
+    [DllImport(ObjCLib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void objc_registerClassPair(IntPtr cls);
+
+    [DllImport(ObjCLib, CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.U1)]
+    internal static extern bool class_addMethod(IntPtr cls, IntPtr selector, IntPtr imp, [MarshalAs(UnmanagedType.LPUTF8Str)] string types);
+
+    [DllImport(ObjCLib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr class_getInstanceMethod(IntPtr cls, IntPtr selector);
+
+    [DllImport(ObjCLib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr method_getImplementation(IntPtr method);
+
+    [DllImport(ObjCLib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr method_getTypeEncoding(IntPtr method);
+
+    [DllImport(ObjCLib, CallingConvention = CallingConvention.Cdecl)]
+    [return: MarshalAs(UnmanagedType.U1)]
+    internal static extern bool class_addProtocol(IntPtr cls, IntPtr protocol);
+
+    [DllImport(ObjCLib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr objc_getProtocol([MarshalAs(UnmanagedType.LPUTF8Str)] string name);
+
     /// <summary>
     /// Creates an NSString from a C# string.
     /// </summary>

@@ -29,4 +29,16 @@ internal static class Win32Bindings
     /// </summary>
     [DllImport(User32)]
     internal static extern bool IsIconic(IntPtr hWnd);
+
+    internal const int GWL_WNDPROC = -4;
+    internal const uint WM_CLOSE = 0x0010;
+
+    [DllImport(User32, EntryPoint = "SetWindowLongPtrW")]
+    internal static extern IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+    [DllImport(User32, EntryPoint = "CallWindowProcW")]
+    internal static extern IntPtr CallWindowProc(IntPtr lpPrevWndFunc, IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport(User32, EntryPoint = "DefWindowProcW")]
+    internal static extern IntPtr DefWindowProc(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
 }

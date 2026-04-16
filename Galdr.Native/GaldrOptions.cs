@@ -120,6 +120,14 @@ public sealed class GaldrOptions
     public Action<IServiceProvider> AfterStartup { get; init; }
 
     /// <summary>
+    /// Called on the UI thread when the user attempts to close the window. If registered,
+    /// the close is cancelled automatically — the handler must call <see cref="Galdr.Terminate"/>
+    /// to actually close the application when ready. This enables async save workflows:
+    /// dispatch JS to the frontend, wait for a callback, then terminate.
+    /// </summary>
+    public Action<Galdr> BeforeClose { get; init; }
+
+    /// <summary>
     /// Runs in the primary process (on the UI thread) when a duplicate launch is detected.
     /// The window has already been focused by the time this fires. Arguments are the command-line
     /// args of the duplicate process; cwd is its current working directory.

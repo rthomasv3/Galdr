@@ -92,4 +92,16 @@ internal static class GTK3Bindings
     /// </summary>
     [DllImport(GTK3Lib, CallingConvention = CallingConvention.Cdecl)]
     internal static extern void gtk_window_deiconify(IntPtr window);
+
+    /// <summary>
+    /// Connects a callback to a GObject signal. Returns the handler ID.
+    /// </summary>
+    [DllImport(GObjectLib, CallingConvention = CallingConvention.Cdecl, EntryPoint = "g_signal_connect_data")]
+    internal static extern ulong g_signal_connect_data(
+        IntPtr instance,
+        [MarshalAs(UnmanagedType.LPUTF8Str)] string detailedSignal,
+        IntPtr handler,
+        IntPtr data,
+        IntPtr destroyData,
+        int connectFlags);
 }

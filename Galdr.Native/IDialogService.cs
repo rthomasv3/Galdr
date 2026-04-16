@@ -1,4 +1,4 @@
-﻿namespace Galdr.Native;
+namespace Galdr.Native;
 
 /// <summary>
 /// Interface used to define the features of a dialog service.
@@ -35,5 +35,5 @@ public interface IDialogService
     /// <returns>
     /// The path of the file or null if cancelled.
     /// </returns>
-    string OpenSaveDialog(string filterList = null, string defaultPath = null);
+    string OpenSaveDialog(string filterList = null, string defaultPath = null, string defaultName = null);
 }
