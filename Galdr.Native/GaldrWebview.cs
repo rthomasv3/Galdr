@@ -194,7 +194,7 @@ public class GaldrWebview : IDisposable
                 }
                 if (target && target.href && (target.href.startsWith('http://') || target.href.startsWith('https://'))) {
                     e.preventDefault();
-                    window.galdrInvoke(JSON.stringify(['__openExternal', { ""url"": target.href }]));
+                    window.galdrInvoke('__openExternal', { url: target.href });
                 }
             });
         ";

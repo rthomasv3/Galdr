@@ -74,6 +74,8 @@ public sealed class GaldrBuilder
             typeof(GaldrJsonSerializer),
             typeof(IGaldrJsonSerializer),
         ];
+        
+        AddAction<string>("__openExternal", ExternalUrlOpener.Open);
     }
 
     #endregion
