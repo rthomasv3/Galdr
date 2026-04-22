@@ -29,6 +29,7 @@ public class Galdr : IDisposable
     private SingleInstanceCoordinator _singleInstance;
     private bool _closing;
     private GCHandle _beforeCloseCallbackHandle;
+    private GCHandle _supportsSecureRestorableStateCallbackHandle;
     private IntPtr _originalWndProc;
 
     #endregion
@@ -43,6 +44,9 @@ public class Galdr : IDisposable
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate bool GtkDeleteEventDelegate(IntPtr widget, IntPtr eventArg, IntPtr userData);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate byte SupportsSecureRestorableStateDelegate(IntPtr self, IntPtr sel, IntPtr app);
 
     #endregion
 
@@ -215,6 +219,11 @@ public class Galdr : IDisposable
             {
                 SetupLinuxBeforeClose();
             }
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        {
+            SetupMacWindowRestoration();
         }
 
         _singleInstance?.StartListener(this, _options.SecondInstance);
@@ -665,6 +674,60 @@ public class Galdr : IDisposable
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Failed to set up Linux BeforeClose: {ex.Message}");
+        }
+    }
+
+    private void SetupMacWindowRestoration()
+    {
+        try
+        {
+            // Opt in to secure coding for restorable state by adding
+            // -applicationSupportsSecureRestorableState: to the existing NSApp delegate's
+            // class. Silences the AppKit warning on launch and makes the app forward-compatible
+            // with future macOS versions that may tighten this requirement.
+            IntPtr nsAppClass = ObjCBindings.objc_getClass("NSApplication");
+            IntPtr sharedApp = ObjCBindings.objc_msgSend_IntPtr(nsAppClass, ObjCBindings.sel_registerName("sharedApplication"));
+            IntPtr currentDelegate = ObjCBindings.objc_msgSend_IntPtr(sharedApp, ObjCBindings.sel_registerName("delegate"));
+
+            if (currentDelegate != IntPtr.Zero)
+            {
+                IntPtr delegateClass = ObjCBindings.objc_msgSend_IntPtr(currentDelegate, ObjCBindings.sel_registerName("class"));
+                IntPtr nsObjectClass = ObjCBindings.objc_getClass("NSObject");
+
+                // Never pollute NSObject globally — if the delegate is a bare NSObject, skip.
+                if (delegateClass != nsObjectClass)
+                {
+                    SupportsSecureRestorableStateDelegate callback = (self, sel, app) => 1;
+                    _supportsSecureRestorableStateCallbackHandle = GCHandle.Alloc(callback);
+                    IntPtr imp = Marshal.GetFunctionPointerForDelegate(callback);
+
+                    ObjCBindings.class_addMethod(
+                        delegateClass,
+                        ObjCBindings.sel_registerName("applicationSupportsSecureRestorableState:"),
+                        imp,
+                        "c@:@");
+                }
+            }
+
+            // Enable automatic window frame persistence. AppKit saves the frame to NSUserDefaults
+            // on every resize/move and restores it on next launch under the given name. If a saved
+            // frame exists, it's applied to the window immediately upon this call.
+            //
+            // NOTE: if a consumer uses ShowLoading, SetSize runs asynchronously after this point
+            // and will overwrite the restored frame. Set size via WebviewHint.Min only when using
+            // window restoration, or skip ShowLoading.
+            IntPtr nsWindow = _webView.GetWindow();
+
+            if (nsWindow != IntPtr.Zero)
+            {
+                IntPtr autosaveName = ObjCBindings.CreateNSString("GaldrMainWindow");
+                ObjCBindings.objc_msgSend_IntPtr_IntPtr(nsWindow, ObjCBindings.sel_registerName("setFrameAutosaveName:"), autosaveName);
+                ObjCBindings.ReleaseNSObject(autosaveName);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to set up Mac window restoration: {ex.Message}");
         }
     }
 
