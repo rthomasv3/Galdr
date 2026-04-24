@@ -41,6 +41,8 @@ public sealed class GaldrBuilder
     private Action<IServiceProvider> _afterStartup;
     private Action<Galdr> _beforeClose;
     private Action<string[], string> _secondInstance;
+    private Action<CommandErrorContext, IServiceProvider> _onCommandError;
+    private Action<UnhandledExceptionContext, IServiceProvider> _onUnhandledException;
 
     #endregion
 
@@ -242,6 +244,33 @@ public sealed class GaldrBuilder
     public GaldrBuilder OnSecondInstance(Action<string[], string> handler)
     {
         _secondInstance = handler;
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a handler that fires when an exception escapes a galdrInvoke command handler.
+    /// The error is already returned to the frontend before this hook runs; use it to log,
+    /// emit telemetry, or otherwise record command failures from a single central location.
+    /// The service provider is passed alongside the error context so the handler can resolve
+    /// app services directly.
+    /// </summary>
+    public GaldrBuilder OnCommandError(Action<CommandErrorContext, IServiceProvider> handler)
+    {
+        _onCommandError = handler;
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a handler that fires for unhandled exceptions outside the command pipeline —
+    /// terminating <see cref="AppDomain.UnhandledException"/> errors and silently-faulting
+    /// tasks reported via <see cref="System.Threading.Tasks.TaskScheduler.UnobservedTaskException"/>.
+    /// The framework subscribes and unsubscribes from the runtime events automatically. The
+    /// service provider is passed alongside the context; it may be <c>null</c> if the exception
+    /// fires before services are built.
+    /// </summary>
+    public GaldrBuilder OnUnhandledException(Action<UnhandledExceptionContext, IServiceProvider> handler)
+    {
+        _onUnhandledException = handler;
         return this;
     }
 
@@ -1737,6 +1766,8 @@ public sealed class GaldrBuilder
             AfterStartup = _afterStartup,
             BeforeClose = _beforeClose,
             SecondInstance = _secondInstance,
+            OnCommandError = _onCommandError,
+            OnUnhandledException = _onUnhandledException,
             ServiceProviderAccessor = _serviceProviderAccessor,
         });
     }

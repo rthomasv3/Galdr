@@ -133,6 +133,25 @@ public sealed class GaldrOptions
     /// args of the duplicate process; cwd is its current working directory.
     /// </summary>
     public Action<string[], string> SecondInstance { get; init; }
+    
+    /// <summary>
+    /// Fires when an exception escapes a galdrInvoke command handler. The error has already
+    /// been serialized and returned to the frontend — this hook exists for logging and
+    /// telemetry. The service provider is passed so the hook can resolve app services (such
+    /// as a logger) without capturing state from <see cref="Startup"/>. Exceptions thrown by
+    /// the hook itself are swallowed so they cannot disrupt the error response to the frontend.
+    /// </summary>
+    public Action<CommandErrorContext, IServiceProvider> OnCommandError { get; init; }
+
+    /// <summary>
+    /// Fires for exceptions that escape the command pipeline — either terminating
+    /// <see cref="AppDomain.UnhandledException"/> errors or silently-faulting tasks surfaced
+    /// via <see cref="System.Threading.Tasks.TaskScheduler.UnobservedTaskException"/>.
+    /// Subscribed at startup and unsubscribed on dispose. The service provider may be
+    /// <c>null</c> if the exception fires before services are built. Exceptions thrown by
+    /// the hook itself are swallowed.
+    /// </summary>
+    public Action<UnhandledExceptionContext, IServiceProvider> OnUnhandledException { get; init; }
 
     /// <summary>
     /// Mutable bridge that carries the service provider built inside <see cref="Galdr.Run"/>

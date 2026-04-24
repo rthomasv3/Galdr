@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using GaldrJson;
 using Microsoft.Extensions.DependencyInjection;
@@ -31,6 +32,8 @@ public class Galdr : IDisposable
     private GCHandle _beforeCloseCallbackHandle;
     private GCHandle _supportsSecureRestorableStateCallbackHandle;
     private IntPtr _originalWndProc;
+    private UnhandledExceptionEventHandler _appDomainExceptionHandler;
+    private EventHandler<UnobservedTaskExceptionEventArgs> _unobservedTaskExceptionHandler;
 
     #endregion
 
@@ -176,6 +179,8 @@ public class Galdr : IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
+        UnsubscribeUnhandledExceptionHooks();
+
         if (_singleInstance != null)
         {
             _singleInstance.Dispose();
@@ -198,8 +203,77 @@ public class Galdr : IDisposable
 
     #region Private Methods
 
+    private void SubscribeUnhandledExceptionHooks()
+    {
+        if (_options.OnUnhandledException != null)
+        {
+            _appDomainExceptionHandler = HandleAppDomainException;
+            _unobservedTaskExceptionHandler = HandleUnobservedTaskException;
+
+            AppDomain.CurrentDomain.UnhandledException += _appDomainExceptionHandler;
+            TaskScheduler.UnobservedTaskException += _unobservedTaskExceptionHandler;
+        }
+    }
+
+    private void UnsubscribeUnhandledExceptionHooks()
+    {
+        if (_appDomainExceptionHandler != null)
+        {
+            AppDomain.CurrentDomain.UnhandledException -= _appDomainExceptionHandler;
+            _appDomainExceptionHandler = null;
+        }
+
+        if (_unobservedTaskExceptionHandler != null)
+        {
+            TaskScheduler.UnobservedTaskException -= _unobservedTaskExceptionHandler;
+            _unobservedTaskExceptionHandler = null;
+        }
+    }
+
+    private void HandleAppDomainException(object sender, UnhandledExceptionEventArgs e)
+    {
+        Exception ex = e.ExceptionObject as Exception;
+
+        InvokeUnhandledExceptionHook(new UnhandledExceptionContext
+        {
+            Exception = ex,
+            IsTerminating = e.IsTerminating,
+            Source = UnhandledExceptionSource.AppDomain,
+        });
+    }
+
+    private void HandleUnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
+    {
+        InvokeUnhandledExceptionHook(new UnhandledExceptionContext
+        {
+            Exception = e.Exception,
+            IsTerminating = false,
+            Source = UnhandledExceptionSource.TaskScheduler,
+        });
+
+        // Mark as observed so the runtime doesn't escalate further (the CLR's default
+        // policy in .NET Core and later is already non-terminating, but this keeps the
+        // behavior explicit and forward-compatible).
+        e.SetObserved();
+    }
+
+    private void InvokeUnhandledExceptionHook(UnhandledExceptionContext context)
+    {
+        try
+        {
+            _options.OnUnhandledException(context, _serviceProvider);
+        }
+        catch
+        {
+            // Swallow — the hook must not raise new exceptions during shutdown or from
+            // a secondary task scheduler event, which could cause recursive reentry.
+        }
+    }
+
     private void RunPrimary()
     {
+        SubscribeUnhandledExceptionHooks();
+
         _options.BeforeStartup?.Invoke();
 
         ConstructWebview();
@@ -330,11 +404,14 @@ public class Galdr : IDisposable
 
     private async void HandleCommand(string id, string paramString)
     {
+        string commandName = null;
+
         try
         {
-            (string commandName, string parameters) = ExtractCommandAndArguments(paramString);
+            string parameters;
+            (commandName, parameters) = ExtractCommandAndArguments(paramString);
 
-            if (_commands.TryGetValue(commandName, out var commandInfo))
+            if (_commands.TryGetValue(commandName, out CommandInfo commandInfo))
             {
                 object result = await commandInfo.Handler(parameters);
 
@@ -362,6 +439,24 @@ public class Galdr : IDisposable
                 Message = _debug ? ex.ToString() : ex.Message
             });
             _webView.Return(id, RPCResult.Error, json);
+
+            if (_options.OnCommandError != null)
+            {
+                try
+                {
+                    _options.OnCommandError(
+                        new CommandErrorContext
+                        {
+                            CommandName = commandName,
+                            Exception = ex,
+                        },
+                        _serviceProvider);
+                }
+                catch
+                {
+                    // Swallow — the error hook must not disrupt the error response to the frontend.
+                }
+            }
         }
     }
 
