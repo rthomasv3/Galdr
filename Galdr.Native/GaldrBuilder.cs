@@ -43,6 +43,7 @@ public sealed class GaldrBuilder
     private Action<string[], string> _secondInstance;
     private Action<CommandErrorContext, IServiceProvider> _onCommandError;
     private Action<UnhandledExceptionContext, IServiceProvider> _onUnhandledException;
+    private Action<Galdr, WindowChangedContext, IServiceProvider> _windowChanged;
 
     #endregion
 
@@ -271,6 +272,21 @@ public sealed class GaldrBuilder
     public GaldrBuilder OnUnhandledException(Action<UnhandledExceptionContext, IServiceProvider> handler)
     {
         _onUnhandledException = handler;
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a handler that fires after the user has finished resizing, moving, or
+    /// changing the state of the window. The handler is debounced internally (~250 ms) and
+    /// dispatched onto the UI thread, so a drag produces a single trailing call. Receives
+    /// the active <see cref="Galdr"/> instance, a snapshot of the new geometry/state, and
+    /// the service provider for resolving app services. On Wayland, position is reported
+    /// as <c>null</c> because the Wayland protocol does not expose absolute window position
+    /// to clients.
+    /// </summary>
+    public GaldrBuilder OnWindowChanged(Action<Galdr, WindowChangedContext, IServiceProvider> handler)
+    {
+        _windowChanged = handler;
         return this;
     }
 
@@ -1768,6 +1784,7 @@ public sealed class GaldrBuilder
             SecondInstance = _secondInstance,
             OnCommandError = _onCommandError,
             OnUnhandledException = _onUnhandledException,
+            WindowChanged = _windowChanged,
             ServiceProviderAccessor = _serviceProviderAccessor,
         });
     }

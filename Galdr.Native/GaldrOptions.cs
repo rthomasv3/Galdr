@@ -133,7 +133,7 @@ public sealed class GaldrOptions
     /// args of the duplicate process; cwd is its current working directory.
     /// </summary>
     public Action<string[], string> SecondInstance { get; init; }
-    
+
     /// <summary>
     /// Fires when an exception escapes a galdrInvoke command handler. The error has already
     /// been serialized and returned to the frontend — this hook exists for logging and
@@ -152,6 +152,19 @@ public sealed class GaldrOptions
     /// the hook itself are swallowed.
     /// </summary>
     public Action<UnhandledExceptionContext, IServiceProvider> OnUnhandledException { get; init; }
+
+    /// <summary>
+    /// Fires after the user has finished resizing, moving, or changing the state of the
+    /// window. Calls are debounced internally (~250 ms) and dispatched onto the UI thread,
+    /// so this hook is safe to use for persistence and other non-trivial work without
+    /// throttling burst events from a drag. The hook fires for every state including
+    /// <see cref="WindowState.Minimized"/> — filter inside the handler if you do not want
+    /// to persist a minimized window. Position is reported in top-left screen coordinates
+    /// on Windows and X11; on Wayland the X/Y components of <see cref="WindowChangedContext"/>
+    /// are <c>null</c> because the Wayland protocol does not expose absolute window position
+    /// to clients. The handler must not throw; exceptions are swallowed.
+    /// </summary>
+    public Action<Galdr, WindowChangedContext, IServiceProvider> WindowChanged { get; init; }
 
     /// <summary>
     /// Mutable bridge that carries the service provider built inside <see cref="Galdr.Run"/>

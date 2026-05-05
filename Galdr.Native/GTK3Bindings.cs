@@ -11,6 +11,25 @@ internal static class GTK3Bindings
     private const string GTK3Lib = "libgtk-3";
     private const string GObjectLib = "libgobject-2.0";
     private const string GLibLib = "libglib-2.0";
+    private const string GdkLib = "libgdk-3";
+
+    /// <summary>
+    /// GDK window state flags as returned by <see cref="gdk_window_get_state"/>.
+    /// Mirrors the <c>GdkWindowState</c> enum from gdkwindow.h.
+    /// </summary>
+    [Flags]
+    internal enum GdkWindowState : uint
+    {
+        Withdrawn = 1 << 0,
+        Iconified = 1 << 1,
+        Maximized = 1 << 2,
+        Sticky = 1 << 3,
+        Fullscreen = 1 << 4,
+        Above = 1 << 5,
+        Below = 1 << 6,
+        Focused = 1 << 7,
+        Tiled = 1 << 8,
+    }
 
     /// <summary>
     /// Gets the type name of a GType.
@@ -104,4 +123,86 @@ internal static class GTK3Bindings
         IntPtr data,
         IntPtr destroyData,
         int connectFlags);
+
+    [DllImport(GTK3Lib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void gtk_window_get_size(IntPtr window, out int width, out int height);
+
+    [DllImport(GTK3Lib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void gtk_window_get_position(IntPtr window, out int rootX, out int rootY);
+
+    [DllImport(GTK3Lib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void gtk_window_resize(IntPtr window, int width, int height);
+
+    [DllImport(GTK3Lib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void gtk_window_move(IntPtr window, int x, int y);
+
+    [DllImport(GTK3Lib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void gtk_window_maximize(IntPtr window);
+
+    [DllImport(GTK3Lib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void gtk_window_unmaximize(IntPtr window);
+
+    [DllImport(GTK3Lib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void gtk_window_iconify(IntPtr window);
+
+    [DllImport(GTK3Lib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void gtk_window_fullscreen(IntPtr window);
+
+    [DllImport(GTK3Lib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern void gtk_window_unfullscreen(IntPtr window);
+
+    /// <summary>
+    /// Returns the GdkWindow associated with a GtkWidget once it has been realized.
+    /// </summary>
+    [DllImport(GTK3Lib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr gtk_widget_get_window(IntPtr widget);
+
+    /// <summary>
+    /// Returns the bitmask of <see cref="GdkWindowState"/> currently set on a GdkWindow.
+    /// Returns zero before the window is realized.
+    /// </summary>
+    [DllImport(GdkLib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern GdkWindowState gdk_window_get_state(IntPtr window);
+
+    /// <summary>
+    /// Returns the default GdkDisplay for the current process. Used to detect whether
+    /// we're running under X11 or Wayland by inspecting the resulting object's GType.
+    /// </summary>
+    [DllImport(GdkLib, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr gdk_display_get_default();
+
+    /// <summary>
+    /// Detects whether the current GTK process is running under Wayland.
+    /// Position queries and moves silently no-op on Wayland by protocol design,
+    /// so callers should suppress those operations when this returns true.
+    /// </summary>
+    internal static bool IsWayland()
+    {
+        bool wayland = false;
+
+        try
+        {
+            IntPtr display = gdk_display_get_default();
+
+            if (display != IntPtr.Zero)
+            {
+                IntPtr displayType = G_TYPE_FROM_INSTANCE(display);
+                IntPtr typeNamePtr = g_type_name(displayType);
+
+                if (typeNamePtr != IntPtr.Zero)
+                {
+                    string typeName = Marshal.PtrToStringAnsi(typeNamePtr);
+                    wayland = typeName == "GdkWaylandDisplay";
+                }
+            }
+        }
+        catch
+        {
+            // Fall back to environment-variable hint if GDK introspection blew up.
+            string sessionType = Environment.GetEnvironmentVariable("XDG_SESSION_TYPE");
+            wayland = sessionType == "wayland";
+        }
+
+        return wayland;
+    }
 }

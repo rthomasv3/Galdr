@@ -31,9 +31,15 @@ public class Galdr : IDisposable
     private bool _closing;
     private GCHandle _beforeCloseCallbackHandle;
     private GCHandle _supportsSecureRestorableStateCallbackHandle;
+    private GCHandle _windowChangedCallbackHandle;
+    private GCHandle _windowStateChangedCallbackHandle;
     private IntPtr _originalWndProc;
     private UnhandledExceptionEventHandler _appDomainExceptionHandler;
     private EventHandler<UnobservedTaskExceptionEventArgs> _unobservedTaskExceptionHandler;
+    private System.Threading.Timer _windowChangedDebounce;
+    private bool _firstWindowChangedSuppressed;
+    private bool _waylandDetected;
+    private const int WindowChangedDebounceMs = 250;
 
     #endregion
 
@@ -50,6 +56,15 @@ public class Galdr : IDisposable
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate byte SupportsSecureRestorableStateDelegate(IntPtr self, IntPtr sel, IntPtr app);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void NSNotificationDelegate(IntPtr self, IntPtr sel, IntPtr notification);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate bool GtkConfigureEventDelegate(IntPtr widget, IntPtr eventArg, IntPtr userData);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate bool GtkWindowStateEventDelegate(IntPtr widget, IntPtr eventArg, IntPtr userData);
 
     #endregion
 
@@ -148,6 +163,197 @@ public class Galdr : IDisposable
     }
 
     /// <summary>
+    /// Moves the window so its top-left corner is at the given screen coordinates.
+    /// Silently no-ops when running under Wayland — clients cannot set absolute
+    /// window position by Wayland protocol design. On macOS the input is interpreted
+    /// in top-left screen coordinates and converted to AppKit's bottom-left frame
+    /// internally.
+    /// </summary>
+    public void SetPosition(int x, int y)
+    {
+        IntPtr handle = _webView?.GetWindow() ?? IntPtr.Zero;
+
+        if (handle != IntPtr.Zero)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                if (Win32Bindings.GetWindowRect(handle, out Win32Bindings.RECT rect))
+                {
+                    Win32Bindings.MoveWindow(handle, x, y, rect.right - rect.left, rect.bottom - rect.top, true);
+                }
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                if (_waylandDetected)
+                {
+                    System.Diagnostics.Debug.WriteLine("SetPosition is a no-op on Wayland: clients cannot set absolute window position.");
+                }
+                else
+                {
+                    GTK3Bindings.gtk_window_move(handle, x, y);
+                }
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                ObjCBindings.NSRect current = ObjCBindings.GetNSRect(handle, ObjCBindings.sel_registerName("frame"));
+                double primaryHeight = GetMacPrimaryScreenHeight();
+                double bottomLeftY = primaryHeight - (y + current.size.height);
+
+                ObjCBindings.NSRect target = new ObjCBindings.NSRect
+                {
+                    origin = new ObjCBindings.NSPoint { x = x, y = bottomLeftY },
+                    size = current.size,
+                };
+
+                ObjCBindings.objc_msgSend_NSRect_bool_void(
+                    handle,
+                    ObjCBindings.sel_registerName("setFrame:display:"),
+                    target,
+                    true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sets the high-level window state (Normal / Minimized / Maximized / Fullscreen).
+    /// On macOS, Maximized maps to AppKit's "zoom" since macOS has no native
+    /// maximize concept, and Fullscreen maps to <c>toggleFullScreen:</c> when not
+    /// already in that state. Calls that target the current state are no-ops.
+    /// </summary>
+    public void SetWindowState(WindowState state)
+    {
+        IntPtr handle = _webView?.GetWindow() ?? IntPtr.Zero;
+
+        if (handle != IntPtr.Zero)
+        {
+            WindowState current = GetWindowStateInternal();
+
+            if (current != state)
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    int cmd = state switch
+                    {
+                        WindowState.Minimized => Win32Bindings.SW_SHOWMINIMIZED,
+                        WindowState.Maximized => Win32Bindings.SW_SHOWMAXIMIZED,
+                        WindowState.Fullscreen => Win32Bindings.SW_SHOWMAXIMIZED, // Win32 has no native fullscreen — best effort.
+                        _ => Win32Bindings.SW_RESTORE,
+                    };
+
+                    Win32Bindings.ShowWindow(handle, cmd);
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    // Order matters: leave the previous state cleanly before entering the new one.
+                    if (current == WindowState.Minimized)
+                    {
+                        GTK3Bindings.gtk_window_deiconify(handle);
+                    }
+                    else if (current == WindowState.Maximized)
+                    {
+                        GTK3Bindings.gtk_window_unmaximize(handle);
+                    }
+                    else if (current == WindowState.Fullscreen)
+                    {
+                        GTK3Bindings.gtk_window_unfullscreen(handle);
+                    }
+
+                    if (state == WindowState.Minimized)
+                    {
+                        GTK3Bindings.gtk_window_iconify(handle);
+                    }
+                    else if (state == WindowState.Maximized)
+                    {
+                        GTK3Bindings.gtk_window_maximize(handle);
+                    }
+                    else if (state == WindowState.Fullscreen)
+                    {
+                        GTK3Bindings.gtk_window_fullscreen(handle);
+                    }
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    // Mac transitions are direction-aware: deminiaturize first if minimized,
+                    // exit fullscreen via toggleFullScreen: if leaving fullscreen, unzoom via
+                    // zoom: if leaving zoomed.
+                    if (current == WindowState.Minimized)
+                    {
+                        ObjCBindings.objc_msgSend_IntPtr_IntPtr(
+                            handle, ObjCBindings.sel_registerName("deminiaturize:"), IntPtr.Zero);
+                    }
+                    else if (current == WindowState.Fullscreen)
+                    {
+                        ObjCBindings.objc_msgSend_IntPtr_IntPtr(
+                            handle, ObjCBindings.sel_registerName("toggleFullScreen:"), IntPtr.Zero);
+                    }
+                    else if (current == WindowState.Maximized)
+                    {
+                        ObjCBindings.objc_msgSend_IntPtr_IntPtr(
+                            handle, ObjCBindings.sel_registerName("zoom:"), IntPtr.Zero);
+                    }
+
+                    if (state == WindowState.Minimized)
+                    {
+                        ObjCBindings.objc_msgSend_IntPtr_IntPtr(
+                            handle, ObjCBindings.sel_registerName("miniaturize:"), IntPtr.Zero);
+                    }
+                    else if (state == WindowState.Maximized)
+                    {
+                        ObjCBindings.objc_msgSend_IntPtr_IntPtr(
+                            handle, ObjCBindings.sel_registerName("zoom:"), IntPtr.Zero);
+                    }
+                    else if (state == WindowState.Fullscreen)
+                    {
+                        ObjCBindings.objc_msgSend_IntPtr_IntPtr(
+                            handle, ObjCBindings.sel_registerName("toggleFullScreen:"), IntPtr.Zero);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Returns the current outer size of the window in logical pixels. When the
+    /// window is maximized or fullscreen, this returns the current outer size,
+    /// not the underlying restored size.
+    /// </summary>
+    public WindowSize GetSize()
+    {
+        (int width, int height) size = GetSizeInternal();
+        return new WindowSize { Width = size.width, Height = size.height };
+    }
+
+    /// <summary>
+    /// Returns the top-left position of the window in screen coordinates, or
+    /// <c>null</c> when running under Wayland (clients cannot read absolute
+    /// window position under the Wayland protocol).
+    /// </summary>
+    public WindowPosition? GetPosition()
+    {
+        (int x, int y)? position = GetPositionInternal();
+        WindowPosition? result = null;
+
+        if (position.HasValue)
+        {
+            result = new WindowPosition { X = position.Value.x, Y = position.Value.y };
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Returns the current high-level window state. Maps to the platform's notion
+    /// of minimized / maximized / fullscreen as documented on <see cref="WindowState"/>.
+    /// On Linux under Wayland, <see cref="WindowState.Minimized"/> cannot be reliably
+    /// detected and a minimized window will report as <see cref="WindowState.Normal"/>;
+    /// see the remarks on <see cref="WindowState.Minimized"/> for the protocol-level reason.
+    /// </summary>
+    public WindowState GetWindowState()
+    {
+        return GetWindowStateInternal();
+    }
+
+    /// <summary>
     /// Evaluates arbitrary JavaScript code. Evaluation happens asynchronously, also
     /// the result of the expression is ignored. Use galdrInvoke if you want to receive
     /// notifications about the results of the evaluation.
@@ -180,6 +386,22 @@ public class Galdr : IDisposable
     public void Dispose()
     {
         UnsubscribeUnhandledExceptionHooks();
+
+        if (_windowChangedDebounce != null)
+        {
+            _windowChangedDebounce.Dispose();
+            _windowChangedDebounce = null;
+        }
+
+        if (_windowChangedCallbackHandle.IsAllocated)
+        {
+            _windowChangedCallbackHandle.Free();
+        }
+
+        if (_windowStateChangedCallbackHandle.IsAllocated)
+        {
+            _windowStateChangedCallbackHandle.Free();
+        }
 
         if (_singleInstance != null)
         {
@@ -279,15 +501,17 @@ public class Galdr : IDisposable
         ConstructWebview();
         BuildServiceProvider();
 
-        if (_options.BeforeClose != null)
+        bool needsBeforeClose = _options.BeforeClose != null;
+        bool needsWindowChanged = _options.WindowChanged != null;
+
+        // The Windows path needs the WndProc subclass for either hook; the Mac and Linux
+        // BeforeClose paths share enough state with WindowChanged that we run them under
+        // the same trigger so the GCHandle bookkeeping has a single ownership site.
+        if (needsBeforeClose)
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
                 SetupMacBeforeClose();
-            }
-            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                SetupWindowsBeforeClose();
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
@@ -295,9 +519,34 @@ public class Galdr : IDisposable
             }
         }
 
+        if (needsBeforeClose || needsWindowChanged)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                SetupWindowsWindowMessages();
+            }
+        }
+
+        if (needsWindowChanged)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                SetupMacWindowChanged();
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                SetupLinuxWindowChanged();
+            }
+        }
+
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
             SetupMacWindowRestoration();
+        }
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+        {
+            _waylandDetected = GTK3Bindings.IsWayland();
         }
 
         _singleInstance?.StartListener(this, _options.SecondInstance);
@@ -700,7 +949,7 @@ public class Galdr : IDisposable
         }
     }
 
-    private void SetupWindowsBeforeClose()
+    private void SetupWindowsWindowMessages()
     {
         try
         {
@@ -708,11 +957,14 @@ public class Galdr : IDisposable
 
             if (hwnd != IntPtr.Zero)
             {
+                bool hasBeforeClose = _options.BeforeClose != null;
+                bool hasWindowChanged = _options.WindowChanged != null;
+
                 WndProcDelegate wndProc = (hWnd, msg, wParam, lParam) =>
                 {
                     IntPtr result;
 
-                    if (msg == Win32Bindings.WM_CLOSE && !_closing)
+                    if (hasBeforeClose && msg == Win32Bindings.WM_CLOSE && !_closing)
                     {
                         _options.BeforeClose(this);
                         result = IntPtr.Zero;
@@ -720,6 +972,14 @@ public class Galdr : IDisposable
                     else
                     {
                         result = Win32Bindings.CallWindowProc(_originalWndProc, hWnd, msg, wParam, lParam);
+
+                        if (hasWindowChanged &&
+                            (msg == Win32Bindings.WM_SIZE ||
+                             msg == Win32Bindings.WM_MOVE ||
+                             msg == Win32Bindings.WM_EXITSIZEMOVE))
+                        {
+                            ScheduleWindowChangedFire();
+                        }
                     }
 
                     return result;
@@ -732,7 +992,7 @@ public class Galdr : IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Failed to set up Windows BeforeClose: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Failed to set up Windows window messages: {ex.Message}");
         }
     }
 
@@ -824,6 +1084,363 @@ public class Galdr : IDisposable
         {
             System.Diagnostics.Debug.WriteLine($"Failed to set up Mac window restoration: {ex.Message}");
         }
+    }
+
+    // --- WindowChanged platform hooks ---
+
+    private void SetupMacWindowChanged()
+    {
+        try
+        {
+            IntPtr nsWindow = _webView.GetWindow();
+
+            if (nsWindow != IntPtr.Zero)
+            {
+                // Build a tiny NSObject subclass with a single method that dispatches every
+                // observed window notification to the same handler. NotificationCenter holds
+                // the observer with an unsafe-unretained reference, so allocating one instance
+                // and never freeing it is the simple, leak-free pattern here — the lifetime
+                // matches the Galdr instance, which is process-singleton in practice.
+                IntPtr observerClass = ObjCBindings.objc_allocateClassPair(
+                    ObjCBindings.objc_getClass("NSObject"),
+                    "GaldrWindowChangeObserver",
+                    IntPtr.Zero);
+
+                if (observerClass == IntPtr.Zero)
+                {
+                    observerClass = ObjCBindings.objc_getClass("GaldrWindowChangeObserver");
+                }
+                else
+                {
+                    NSNotificationDelegate callback = (self, sel, notification) => ScheduleWindowChangedFire();
+                    _windowChangedCallbackHandle = GCHandle.Alloc(callback);
+                    IntPtr imp = Marshal.GetFunctionPointerForDelegate(callback);
+
+                    ObjCBindings.class_addMethod(
+                        observerClass,
+                        ObjCBindings.sel_registerName("windowChanged:"),
+                        imp,
+                        "v@:@");
+
+                    ObjCBindings.objc_registerClassPair(observerClass);
+                }
+
+                IntPtr observer = ObjCBindings.objc_msgSend_IntPtr(
+                    ObjCBindings.objc_msgSend_IntPtr(observerClass, ObjCBindings.sel_registerName("alloc")),
+                    ObjCBindings.sel_registerName("init"));
+
+                IntPtr center = ObjCBindings.objc_msgSend_IntPtr(
+                    ObjCBindings.objc_getClass("NSNotificationCenter"),
+                    ObjCBindings.sel_registerName("defaultCenter"));
+
+                IntPtr addObserverSel = ObjCBindings.sel_registerName("addObserver:selector:name:object:");
+                IntPtr selector = ObjCBindings.sel_registerName("windowChanged:");
+
+                string[] names =
+                {
+                    "NSWindowDidResizeNotification",
+                    "NSWindowDidMoveNotification",
+                    "NSWindowDidMiniaturizeNotification",
+                    "NSWindowDidDeminiaturizeNotification",
+                    "NSWindowDidEnterFullScreenNotification",
+                    "NSWindowDidExitFullScreenNotification",
+                };
+
+                foreach (string name in names)
+                {
+                    IntPtr nameStr = ObjCBindings.CreateNSString(name);
+                    ObjCBindings.objc_msgSend_IntPtr_IntPtr_IntPtr_IntPtr_void(
+                        center, addObserverSel, observer, selector, nameStr, nsWindow);
+                    ObjCBindings.ReleaseNSObject(nameStr);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to set up Mac WindowChanged: {ex.Message}");
+        }
+    }
+
+    private void SetupLinuxWindowChanged()
+    {
+        try
+        {
+            IntPtr gtkWindow = _webView.GetWindow();
+
+            if (gtkWindow != IntPtr.Zero)
+            {
+                GtkConfigureEventDelegate configureHandler = (widget, eventArg, userData) =>
+                {
+                    ScheduleWindowChangedFire();
+                    return false;
+                };
+
+                _windowChangedCallbackHandle = GCHandle.Alloc(configureHandler);
+                GTK3Bindings.g_signal_connect_data(
+                    gtkWindow,
+                    "configure-event",
+                    Marshal.GetFunctionPointerForDelegate(configureHandler),
+                    IntPtr.Zero, IntPtr.Zero, 0);
+
+                GtkWindowStateEventDelegate stateHandler = (widget, eventArg, userData) =>
+                {
+                    ScheduleWindowChangedFire();
+                    return false;
+                };
+
+                _windowStateChangedCallbackHandle = GCHandle.Alloc(stateHandler);
+                GTK3Bindings.g_signal_connect_data(
+                    gtkWindow,
+                    "window-state-event",
+                    Marshal.GetFunctionPointerForDelegate(stateHandler),
+                    IntPtr.Zero, IntPtr.Zero, 0);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Failed to set up Linux WindowChanged: {ex.Message}");
+        }
+    }
+
+    private void ScheduleWindowChangedFire()
+    {
+        if (_options.WindowChanged != null && !_closing)
+        {
+            // Lazy-init the timer on first event. Same pattern as the existing GCHandle
+            // bookkeeping — we don't allocate anything until a hook is wired and an event
+            // actually arrives.
+            if (_windowChangedDebounce == null)
+            {
+                Interlocked.CompareExchange(
+                    ref _windowChangedDebounce,
+                    new System.Threading.Timer(_ => FireWindowChanged(), null, Timeout.Infinite, Timeout.Infinite),
+                    null);
+            }
+
+            _windowChangedDebounce.Change(WindowChangedDebounceMs, Timeout.Infinite);
+        }
+    }
+
+    private void FireWindowChanged()
+    {
+        if (_webView != null && !_closing && _options.WindowChanged != null)
+        {
+            try
+            {
+                _webView.Dispatch(() =>
+                {
+                    if (!_closing)
+                    {
+                        if (!_firstWindowChangedSuppressed)
+                        {
+                            // Drop the first debounced fire. The framework's own initialization
+                            // produces native events on every platform — initial show/configure
+                            // on GTK, first setFrame: on AppKit, first WM_SIZE/WM_MOVE on Win32 —
+                            // and the debounce collapses them into one fire that we silently eat.
+                            // Subsequent fires are real user-driven changes.
+                            _firstWindowChangedSuppressed = true;
+                        }
+                        else
+                        {
+                            try
+                            {
+                                WindowChangedContext context = SnapshotWindow();
+                                _options.WindowChanged(this, context, _serviceProvider);
+                            }
+                            catch
+                            {
+                                // The hook must not raise — swallow to keep the debounce timer healthy.
+                            }
+                        }
+                    }
+                });
+            }
+            catch
+            {
+                // Webview may have been disposed mid-fire; ignore.
+            }
+        }
+    }
+
+    private WindowChangedContext SnapshotWindow()
+    {
+        (int width, int height) size = GetSizeInternal();
+        (int x, int y)? position = GetPositionInternal();
+        WindowState state = GetWindowStateInternal();
+
+        return new WindowChangedContext
+        {
+            Width = size.width,
+            Height = size.height,
+            X = position?.x,
+            Y = position?.y,
+            State = state,
+        };
+    }
+
+    // --- Per-platform geometry / state queries ---
+
+    private (int width, int height) GetSizeInternal()
+    {
+        IntPtr handle = _webView?.GetWindow() ?? IntPtr.Zero;
+        (int width, int height) result = (0, 0);
+
+        if (handle != IntPtr.Zero)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                if (Win32Bindings.GetWindowRect(handle, out Win32Bindings.RECT rect))
+                {
+                    result = (rect.right - rect.left, rect.bottom - rect.top);
+                }
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                GTK3Bindings.gtk_window_get_size(handle, out int w, out int h);
+                result = (w, h);
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                ObjCBindings.NSRect frame = ObjCBindings.GetNSRect(handle, ObjCBindings.sel_registerName("frame"));
+                result = ((int)frame.size.width, (int)frame.size.height);
+            }
+        }
+
+        return result;
+    }
+
+    private (int x, int y)? GetPositionInternal()
+    {
+        IntPtr handle = _webView?.GetWindow() ?? IntPtr.Zero;
+        (int x, int y)? result = null;
+
+        if (handle != IntPtr.Zero)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                if (Win32Bindings.GetWindowRect(handle, out Win32Bindings.RECT rect))
+                {
+                    result = (rect.left, rect.top);
+                }
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                if (!_waylandDetected)
+                {
+                    GTK3Bindings.gtk_window_get_position(handle, out int x, out int y);
+                    result = (x, y);
+                }
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                ObjCBindings.NSRect frame = ObjCBindings.GetNSRect(handle, ObjCBindings.sel_registerName("frame"));
+                double primaryHeight = GetMacPrimaryScreenHeight();
+                // NSWindow.frame.origin is bottom-left in the global screen coordinate space whose
+                // origin is the bottom-left of the primary screen. Flip Y to top-left so the value
+                // we expose matches Win32/X11 conventions.
+                int topLeftY = (int)(primaryHeight - (frame.origin.y + frame.size.height));
+                result = ((int)frame.origin.x, topLeftY);
+            }
+        }
+
+        return result;
+    }
+
+    private WindowState GetWindowStateInternal()
+    {
+        IntPtr handle = _webView?.GetWindow() ?? IntPtr.Zero;
+        WindowState result = WindowState.Normal;
+
+        if (handle != IntPtr.Zero)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                Win32Bindings.WINDOWPLACEMENT wp = new() { length = (uint)Marshal.SizeOf<Win32Bindings.WINDOWPLACEMENT>() };
+
+                if (Win32Bindings.GetWindowPlacement(handle, ref wp))
+                {
+                    result = wp.showCmd switch
+                    {
+                        Win32Bindings.SW_SHOWMINIMIZED => WindowState.Minimized,
+                        Win32Bindings.SW_SHOWMAXIMIZED => WindowState.Maximized,
+                        _ => WindowState.Normal,
+                    };
+                }
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                IntPtr gdkWindow = GTK3Bindings.gtk_widget_get_window(handle);
+
+                if (gdkWindow != IntPtr.Zero)
+                {
+                    GTK3Bindings.GdkWindowState state = GTK3Bindings.gdk_window_get_state(gdkWindow);
+
+                    // The xdg-shell protocol intentionally has no event for the compositor to
+                    // tell a client it has been minimized — set_minimized is request-only. GTK3
+                    // explicitly removed the iconified state change for the Wayland backend, so
+                    // GDK_WINDOW_STATE_ICONIFIED is never set on Wayland, regardless of compositor.
+                    // Detection works on X11 only; on Wayland a minimized window reports Normal.
+                    if ((state & GTK3Bindings.GdkWindowState.Fullscreen) != 0)
+                    {
+                        result = WindowState.Fullscreen;
+                    }
+                    else if ((state & GTK3Bindings.GdkWindowState.Iconified) != 0)
+                    {
+                        result = WindowState.Minimized;
+                    }
+                    else if ((state & GTK3Bindings.GdkWindowState.Maximized) != 0)
+                    {
+                        result = WindowState.Maximized;
+                    }
+                }
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                ulong styleMask = ObjCBindings.objc_msgSend_ulong(handle, ObjCBindings.sel_registerName("styleMask"));
+
+                if ((styleMask & ObjCBindings.NSWindowStyleMaskFullScreen) != 0)
+                {
+                    result = WindowState.Fullscreen;
+                }
+                else if (ObjCBindings.objc_msgSend_bool(handle, ObjCBindings.sel_registerName("isMiniaturized")))
+                {
+                    result = WindowState.Minimized;
+                }
+                else if (ObjCBindings.objc_msgSend_bool(handle, ObjCBindings.sel_registerName("isZoomed")))
+                {
+                    result = WindowState.Maximized;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private double GetMacPrimaryScreenHeight()
+    {
+        // The "primary" screen — the one whose bottom-left is the origin of NSWindow's
+        // global coordinate space — is screens[0], not [NSScreen mainScreen]. mainScreen
+        // tracks the *key* screen, which can change at runtime.
+        double height = 0.0;
+
+        IntPtr screensArray = ObjCBindings.objc_msgSend_IntPtr(
+            ObjCBindings.objc_getClass("NSScreen"),
+            ObjCBindings.sel_registerName("screens"));
+
+        if (screensArray != IntPtr.Zero)
+        {
+            IntPtr primary = ObjCBindings.objc_msgSend_IntPtr(
+                screensArray,
+                ObjCBindings.sel_registerName("firstObject"));
+
+            if (primary != IntPtr.Zero)
+            {
+                ObjCBindings.NSRect frame = ObjCBindings.GetNSRect(primary, ObjCBindings.sel_registerName("frame"));
+                height = frame.size.height;
+            }
+        }
+
+        return height;
     }
 
     private void SetupMacMenuBar(string fallbackName)
