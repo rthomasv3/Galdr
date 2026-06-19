@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageId>Galdr.Native.Templates.rthomasv3</PackageId>
+    <PackageVersion>1.0.0</PackageVersion>
+    <Title>Galdr.Native Personal Template (rthomasv3)</Title>
+    <Authors>rthomasv3</Authors>
+    <Description>Personal dotnet new template for Galdr.Native desktop apps: Vue 3 (Composition API, JavaScript), Tailwind CSS v4, auto-imported Lucide icons, system/light/dark theming, and file logging. Not published; install from the local folder.</Description>
+    <PackageTags>dotnet-new;templates;galdr;desktop;webview;vue</PackageTags>
+
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <!-- Pack dotfiles (.template.config, .gitignore) and keep them verbatim. -->
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="templates\**\*"
+             Exclude="templates\**\bin\**;templates\**\obj\**;templates\**\node_modules\**;templates\**\dist\**" />
+    <Compile Remove="**\*" />
+  </ItemGroup>
+
+</Project>

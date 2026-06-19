@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+:root {
+    --ui-scale: 1rem;
+}
+
+html {
+    font-size: var(--ui-scale);
+}
+
+#app {
+    background-color: var(--color-surface);
+    color: var(--color-on-surface);
+}
+
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+}
+
+* {
+    scrollbar-color: var(--color-scrollbar-thumb) transparent;
+}
+
+*::-webkit-scrollbar {
+    -webkit-appearance: none;
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--color-scrollbar-thumb);
+    border-radius: 3px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: var(--color-scrollbar-thumb-hover);
+}
+
+@theme {
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Cantarell, 'Liberation Sans', sans-serif;
+    --default-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Cantarell, 'Liberation Sans', sans-serif;
+
+    --color-surface: var(--color-white);
+    --color-surface-alt: var(--color-gray-100);
+    --color-on-surface: var(--color-gray-900);
+    --color-on-surface-muted: var(--color-gray-500);
+    --color-border: var(--color-gray-200);
+    --color-accent: var(--color-violet-600);
+    --color-scrollbar-thumb: var(--color-gray-300);
+    --color-scrollbar-thumb-hover: var(--color-gray-400);
+}
+
+.light {
+    --color-surface: var(--color-white);
+    --color-surface-alt: var(--color-gray-100);
+    --color-on-surface: var(--color-gray-900);
+    --color-on-surface-muted: var(--color-gray-500);
+    --color-border: var(--color-gray-200);
+    --color-accent: var(--color-violet-600);
+    --color-scrollbar-thumb: var(--color-gray-300);
+    --color-scrollbar-thumb-hover: var(--color-gray-400);
+}
+
+.dark {
+    --color-surface: var(--color-zinc-900);
+    --color-surface-alt: var(--color-zinc-800);
+    --color-on-surface: var(--color-zinc-100);
+    --color-on-surface-muted: var(--color-zinc-400);
+    --color-border: var(--color-zinc-700);
+    --color-accent: var(--color-violet-400);
+    --color-scrollbar-thumb: var(--color-zinc-700);
+    --color-scrollbar-thumb-hover: var(--color-zinc-600);
+}

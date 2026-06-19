@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GaldrApp</RootNamespace>
+    <PublishAot>true</PublishAot>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>obj/Generated</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Galdr.Native" Version="2.0.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <FrontEndDir>$(MSBuildProjectDirectory)/FrontEnd</FrontEndDir>
+    <FrontEndDist>$(FrontEndDir)/dist</FrontEndDist>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrontEndSource Include="$(FrontEndDir)/src/**/*" />
+    <FrontEndSource Include="$(FrontEndDir)/index.html" />
+    <FrontEndSource Include="$(FrontEndDir)/package.json" />
+    <FrontEndSource Include="$(FrontEndDir)/vite.config.*" />
+  </ItemGroup>
+
+  <Target Name="EnsureFrontEndBuilt"
+          Condition="'$(Configuration)' == 'Release'"
+          Inputs="@(FrontEndSource)"
+          Outputs="$(FrontEndDist)/index.html">
+    <Message Importance="high" Text="Galdr: building front end in $(FrontEndDir)" />
+    <Exec Command="npm install"
+          WorkingDirectory="$(FrontEndDir)"
+          Condition="!Exists('$(FrontEndDir)/node_modules')" />
+    <Exec Command="npm run build" WorkingDirectory="$(FrontEndDir)" />
+  </Target>
+
+  <Target Name="StageFrontEnd"
+          BeforeTargets="AssignTargetPaths"
+          DependsOnTargets="EnsureFrontEndBuilt"
+          Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <_GaldrDist Include="$(FrontEndDist)/**/*.*" />
+      <Content Include="@(_GaldrDist)"
+               CopyToOutputDirectory="PreserveNewest"
+               TargetPath="wwwroot/%(_GaldrDist.RecursiveDir)%(_GaldrDist.Filename)%(_GaldrDist.Extension)" />
+    </ItemGroup>
+  </Target>
+
+</Project>

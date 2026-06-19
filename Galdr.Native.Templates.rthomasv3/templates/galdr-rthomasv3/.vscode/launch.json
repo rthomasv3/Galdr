@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "GaldrApp (Debug)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "dev: frontend + build",
+            "program": "${workspaceFolder}/bin/Debug/net10.0/GaldrApp.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "stopAtEntry": false,
+            "console": "internalConsole"
+        }
+    ]
+}

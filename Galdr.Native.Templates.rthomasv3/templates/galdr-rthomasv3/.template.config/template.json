@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "rthomasv3",
+  "classifications": [ "Desktop", "Galdr", "Vue", "WebView" ],
+  "identity": "Galdr.Native.Templates.rthomasv3.App",
+  "name": "Galdr.Native App (rthomasv3)",
+  "description": "Personal Galdr.Native desktop app starter: Vue 3 (Composition API, JavaScript), Tailwind CSS v4, auto-imported Lucide icons, system/light/dark theming, and file logging. .NET 10 with AOT.",
+  "shortName": "galdr-rthomasv3",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "sourceName": "GaldrApp",
+  "preferNameDirectory": true,
+  "primaryOutputs": [
+    { "path": "GaldrApp.csproj" }
+  ],
+  "postActions": [
+    {
+      "description": "Next steps to run your Galdr app.",
+      "manualInstructions": [
+        { "text": "Debug (hot reload):  1) cd FrontEnd && npm install && npm run dev   2) in another shell: dotnet run -c Debug" },
+        { "text": "Release (one shot):  dotnet run -c Release   (the build compiles the front end and stages it as wwwroot)" }
+      ],
+      "actionId": "AC1156F7-BB77-4DB8-B28F-24EEBCCA1E5C",
+      "continueOnError": true
+    }
+  ]
+}
