@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Galdr.Native",
+  "classifications": [ "Desktop", "Galdr", "Vue", "React", "Web", "WebView" ],
+  "identity": "Galdr.Native.Templates.App",
+  "name": "Galdr.Native App",
+  "description": "A cross-platform Galdr.Native desktop app with a Vue or React front end and a working JS-to-C# round-trip greeter.",
+  "shortName": "galdr",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "sourceName": "GaldrApp",
+  "preferNameDirectory": true,
+  "symbols": {
+    "frontend": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "Front-end framework to scaffold.",
+      "choices": [
+        { "choice": "vue", "description": "Vue 3 + Vite" },
+        { "choice": "react", "description": "React + Vite" }
+      ],
+      "defaultValue": "vue"
+    },
+    "js": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "Use JavaScript for the front end instead of TypeScript (TypeScript is the default)."
+    },
+    "typescript": {
+      "type": "computed",
+      "value": "(!js)"
+    },
+    "Framework": {
+      "type": "parameter",
+      "datatype": "choice",
+      "description": "Target framework for the app.",
+      "choices": [
+        { "choice": "net8.0", "description": ".NET 8" },
+        { "choice": "net9.0", "description": ".NET 9" },
+        { "choice": "net10.0", "description": ".NET 10" }
+      ],
+      "defaultValue": "net10.0",
+      "replaces": "net10.0"
+    },
+    "aot": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "Enable PublishAot in the project file."
+    }
+  },
+  "sources": [
+    {
+      "source": "./",
+      "target": "./",
+      "modifiers": [
+        { "exclude": [ "frontend/**" ] }
+      ]
+    },
+    {
+      "source": "./frontend/vue-ts/",
+      "target": "./FrontEnd/",
+      "modifiers": [
+        { "condition": "(!(frontend == 'vue' && typescript))", "exclude": [ "**/*" ] }
+      ]
+    },
+    {
+      "source": "./frontend/vue-js/",
+      "target": "./FrontEnd/",
+      "modifiers": [
+        { "condition": "(!(frontend == 'vue' && !typescript))", "exclude": [ "**/*" ] }
+      ]
+    },
+    {
+      "source": "./frontend/react-ts/",
+      "target": "./FrontEnd/",
+      "modifiers": [
+        { "condition": "(!(frontend == 'react' && typescript))", "exclude": [ "**/*" ] }
+      ]
+    },
+    {
+      "source": "./frontend/react-js/",
+      "target": "./FrontEnd/",
+      "modifiers": [
+        { "condition": "(!(frontend == 'react' && !typescript))", "exclude": [ "**/*" ] }
+      ]
+    }
+  ],
+  "primaryOutputs": [
+    { "path": "GaldrApp.csproj" }
+  ],
+  "postActions": [
+    {
+      "description": "Next steps to run your Galdr app.",
+      "manualInstructions": [
+        { "text": "Debug (hot reload):  1) cd FrontEnd && npm install && npm run dev   2) in another shell: dotnet run -c Debug" },
+        { "text": "Release (one shot):  dotnet run -c Release   (the build compiles the front end and stages it as wwwroot)" }
+      ],
+      "actionId": "AC1156F7-BB77-4DB8-B28F-24EEBCCA1E5C",
+      "continueOnError": true
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageType>Template</PackageType>
+    <PackageId>Galdr.Native.Templates</PackageId>
+    <PackageVersion>1.0.0</PackageVersion>
+    <Title>Galdr.Native Templates</Title>
+    <Authors>Galdr.Native</Authors>
+    <Description>dotnet new templates for Galdr.Native cross-platform desktop apps (Vue or React, JavaScript or TypeScript).</Description>
+    <PackageTags>dotnet-new;templates;galdr;desktop;webview;vue;react</PackageTags>
+
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IncludeContentInPack>true</IncludeContentInPack>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <ContentTargetFolders>content</ContentTargetFolders>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <!-- Pack dotfiles (.template.config, .gitignore) and keep them verbatim. -->
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="templates\**\*"
+             Exclude="templates\**\bin\**;templates\**\obj\**;templates\**\node_modules\**;templates\**\dist\**" />
+    <Compile Remove="**\*" />
+  </ItemGroup>
+
+</Project>

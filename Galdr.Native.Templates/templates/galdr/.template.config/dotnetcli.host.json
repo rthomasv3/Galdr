@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json.schemastore.org/dotnetcli.host",
+  "symbolInfo": {
+    "frontend": {
+      "longName": "frontend",
+      "shortName": "F"
+    },
+    "js": {
+      "longName": "js",
+      "shortName": ""
+    },
+    "Framework": {
+      "longName": "framework",
+      "shortName": "f"
+    },
+    "aot": {
+      "longName": "aot",
+      "shortName": ""
+    }
+  }
+}

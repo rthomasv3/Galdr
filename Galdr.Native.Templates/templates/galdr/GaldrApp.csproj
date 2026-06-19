@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>GaldrApp</RootNamespace>
+    <!--#if (aot) -->
+    <PublishAot>true</PublishAot>
+    <!--#endif -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Galdr.Native" Version="2.0.0" />
+  </ItemGroup>
+
+  <!--
+    Front-end build (Release only; Debug uses the Vite dev server).
+    The dist files are added inside a target rather than via a static Content glob:
+    on a clean checkout dist/ does not exist at evaluation time, so a glob would
+    capture nothing. Build first, then stage before AssignTargetPaths.
+  -->
+  <PropertyGroup>
+    <FrontEndDir>$(MSBuildProjectDirectory)/FrontEnd</FrontEndDir>
+    <FrontEndDist>$(FrontEndDir)/dist</FrontEndDist>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrontEndSource Include="$(FrontEndDir)/src/**/*" />
+    <FrontEndSource Include="$(FrontEndDir)/index.html" />
+    <FrontEndSource Include="$(FrontEndDir)/package.json" />
+    <FrontEndSource Include="$(FrontEndDir)/vite.config.*" />
+    <FrontEndSource Include="$(FrontEndDir)/tsconfig*.json" />
+  </ItemGroup>
+
+  <!-- Build the front end only when its sources are newer than the last dist output. -->
+  <Target Name="EnsureFrontEndBuilt"
+          Condition="'$(Configuration)' == 'Release'"
+          Inputs="@(FrontEndSource)"
+          Outputs="$(FrontEndDist)/index.html">
+    <Message Importance="high" Text="Galdr: building front end in $(FrontEndDir)" />
+    <Exec Command="npm install"
+          WorkingDirectory="$(FrontEndDir)"
+          Condition="!Exists('$(FrontEndDir)/node_modules')" />
+    <Exec Command="npm run build" WorkingDirectory="$(FrontEndDir)" />
+  </Target>
+
+  <!-- Stage whatever is in dist/ as wwwroot. Runs every Release build; cheap (no rebuild). -->
+  <Target Name="StageFrontEnd"
+          BeforeTargets="AssignTargetPaths"
+          DependsOnTargets="EnsureFrontEndBuilt"
+          Condition="'$(Configuration)' == 'Release'">
+    <ItemGroup>
+      <_GaldrDist Include="$(FrontEndDist)/**/*.*" />
+      <Content Include="@(_GaldrDist)"
+               CopyToOutputDirectory="PreserveNewest"
+               TargetPath="wwwroot/%(_GaldrDist.RecursiveDir)%(_GaldrDist.Filename)%(_GaldrDist.Extension)" />
+    </ItemGroup>
+  </Target>
+
+</Project>
