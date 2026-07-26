@@ -635,11 +635,12 @@ public class Galdr : IDisposable
 
     private void BuildServiceProvider()
     {
-        DialogService dialogService = new DialogService(_webView.GetWindow());
+        DialogService dialogService = new(_webView.GetWindow());
+        EventService eventService = new(_webView);
 
         _serviceProvider = _options.Services
-            .AddSingleton(_ => new EventService(_webView))
-            .AddSingleton<IEventService, EventService>()
+            .AddSingleton<IEventService>(eventService)
+            .AddSingleton(eventService)
             .AddSingleton<IDialogService>(dialogService)
             .AddSingleton(dialogService)
             .AddSingleton(this)
