@@ -1,0 +1,15 @@
+<Project>
+
+  <!-- The Microsoft.AspNetCore.App framework reference (needed by the optional
+       EmbeddedContent/LocalHostedContent providers) makes self-contained publishes
+       carry the IIS in-process hosting module, which a Galdr desktop app can never
+       load. Set GaldrKeepIisNativeAssets=true to opt out of the prune. -->
+  <Target Name="GaldrPruneIisNativeAssets"
+          AfterTargets="ComputeResolvedFilesToPublishList"
+          Condition="'$(GaldrKeepIisNativeAssets)' != 'true'">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(Filename)' == 'aspnetcorev2_inprocess'" />
+    </ItemGroup>
+  </Target>
+
+</Project>

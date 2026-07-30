@@ -6,7 +6,7 @@
     <Description>A multi-platform desktop app framework for C#.</Description>
     <Copyright>Copyright © Robert Thomas 2026</Copyright>
     <LangVersion>latest</LangVersion>
-    <VersionPrefix>2.0.1</VersionPrefix>
+    <VersionPrefix>2.0.2</VersionPrefix>
     <Authors>Robert Thomas</Authors>
     <RepositoryUrl>https://github.com/rthomasv3/Galdr</RepositoryUrl>
     <PackageIcon>wizard-round-128.png</PackageIcon>
@@ -51,6 +51,10 @@
 
   <ItemGroup>
     <Content Include="runtimes\**\*.*" Pack="true" PackagePath="runtimes" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="buildTransitive\Galdr.Native.targets" Pack="true" PackagePath="buildTransitive\" />
   </ItemGroup>
 
 </Project>

@@ -563,7 +563,8 @@ public class Galdr : IDisposable
 
     private void ConstructWebview()
     {
-        _mainContent = _options.ContentProvider ?? new LocalHostedContent(_options.Port);
+        _mainContent = _options.ContentProvider ??
+            new FolderContent(Path.Combine(AppContext.BaseDirectory, "wwwroot"), hostname: "galdr.localhost");
 
         IWebviewContent loadingContent = _options.ShowLoading ?
             new LoadingContent(_options.LoadingMessage, _options.LoadingBackground) :
