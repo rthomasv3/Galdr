@@ -12,4 +12,90 @@
     </ItemGroup>
   </Target>
 
+  <!-- The Android JS bridge (GaldrJsBridge) uses [Export]-based Java binding, which
+       needs the Mono.Android.Export assembly at runtime; full trimming strips it. -->
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+    <TrimmerRootAssembly Include="Mono.Android.Export" RootMode="All" />
+  </ItemGroup>
+
+  <!-- The package's desktop webview/dialog natives (runtimes/linux-x64/native/*.so)
+       leak into Android APKs as lib/x86_64/ entries: NuGet's RID graph falls back
+       android-x64 -> linux-x64, and the Android build packages every resolved .so.
+       They are desktop ELF binaries with no business on a phone — prune them before
+       the native-library collection runs. -->
+  <Target Name="GaldrPruneDesktopNativeLibraries"
+          BeforeTargets="_IncludeNativeSystemLibraries"
+          Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+          Condition="'%(Extension)' == '.so' And $([System.String]::Copy('%(FullPath)').ToLowerInvariant().Contains('galdr.native'))" />
+    </ItemGroup>
+  </Target>
+
+  <!-- Resolves the build machine's LAN address so debug builds can stamp it into the
+       dev marker — this is how a phone finds the dev server with zero configuration.
+       The UDP "connect" sends no packets; the OS just selects the outbound interface. -->
+  <UsingTask TaskName="GaldrGetLanIp"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <LanIp ParameterType="System.String" Output="true" />
+    </ParameterGroup>
+    <Task>
+      <Using Namespace="System.Net" />
+      <Using Namespace="System.Net.Sockets" />
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        try
+        {
+            using (Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, 0))
+            {
+                socket.Connect("8.8.8.8", 65530);
+                IPEndPoint endPoint = socket.LocalEndPoint as IPEndPoint;
+                LanIp = endPoint != null ? endPoint.Address.ToString() : "";
+            }
+        }
+        catch
+        {
+            LanIp = "";
+        }
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+  <!-- Stages the galdr.dev.json marker into Debug builds only. MultiplatformContent
+       keys its dev-server behavior off this file's existence at runtime — Release
+       builds never contain it, so they always serve the bundled frontend. Override
+       with GaldrDevMarker=false (suppress in Debug) or GaldrDevMarker=true (force). -->
+  <Target Name="GaldrGenerateDevMarker"
+          BeforeTargets="AssignTargetPaths;_CollectBundleResources"
+          Condition="('$(Configuration)' == 'Debug' Or '$(GaldrDevMarker)' == 'true') And '$(GaldrDevMarker)' != 'false' And '$(DesignTimeBuild)' != 'true'">
+
+    <PropertyGroup>
+      <_GaldrTfmPlatform>$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)'))</_GaldrTfmPlatform>
+      <_GaldrDevMarkerPath>$(IntermediateOutputPath)galdr.dev.json</_GaldrDevMarkerPath>
+    </PropertyGroup>
+
+    <GaldrGetLanIp>
+      <Output TaskParameter="LanIp" PropertyName="_GaldrLanIp" />
+    </GaldrGetLanIp>
+
+    <WriteLinesToFile File="$(_GaldrDevMarkerPath)"
+                      Lines="{&quot;configuration&quot;:&quot;$(Configuration)&quot;,&quot;hostIp&quot;:&quot;$(_GaldrLanIp)&quot;}"
+                      Overwrite="true"
+                      WriteOnlyWhenDifferent="true" />
+
+    <ItemGroup Condition="'$(_GaldrTfmPlatform)' == 'android'">
+      <AndroidAsset Include="$(_GaldrDevMarkerPath)" Link="galdr.dev.json" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(_GaldrTfmPlatform)' == 'ios'">
+      <BundleResource Include="$(_GaldrDevMarkerPath)" Link="galdr.dev.json" />
+    </ItemGroup>
+
+    <ItemGroup Condition="'$(_GaldrTfmPlatform)' != 'android' And '$(_GaldrTfmPlatform)' != 'ios'">
+      <Content Include="$(_GaldrDevMarkerPath)" Link="galdr.dev.json" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+  </Target>
+
 </Project>

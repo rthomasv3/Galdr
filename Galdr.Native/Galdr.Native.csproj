@@ -1,12 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFrameworks>net10.0;net9.0;net8.0</TargetFrameworks>
-    <PublishAot>true</PublishAot>
-    <Description>A multi-platform desktop app framework for C#.</Description>
+    <!-- Mobile targets require the android/ios .NET workloads. Machines without them
+         can still build the desktop targets with -p:GaldrIncludeMobile=false. -->
+    <TargetFrameworks Condition="'$(GaldrIncludeMobile)' != 'false'">$(TargetFrameworks);net10.0-android;net10.0-ios</TargetFrameworks>
+    <Description>A multi-platform desktop and mobile app framework for C#.</Description>
     <Copyright>Copyright © Robert Thomas 2026</Copyright>
     <LangVersion>latest</LangVersion>
-    <VersionPrefix>2.0.1</VersionPrefix>
+    <VersionPrefix>3.0.0</VersionPrefix>
+    <VersionSuffix>dev6</VersionSuffix>
     <Authors>Robert Thomas</Authors>
     <RepositoryUrl>https://github.com/rthomasv3/Galdr</RepositoryUrl>
     <PackageIcon>wizard-round-128.png</PackageIcon>
@@ -17,13 +20,68 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+  <PropertyGroup>
+    <_GaldrPlatform>$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)'))</_GaldrPlatform>
+    <GaldrIsMobile Condition="'$(_GaldrPlatform)' == 'android' Or '$(_GaldrPlatform)' == 'ios'">true</GaldrIsMobile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GaldrIsMobile)' != 'true'">
+    <PublishAot>true</PublishAot>
     <IsAotCompatible>True</IsAotCompatible>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
-    <IsAotCompatible>True</IsAotCompatible>
+  <PropertyGroup Condition="'$(_GaldrPlatform)' == 'android'">
+    <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(_GaldrPlatform)' == 'ios'">
+    <SupportedOSPlatformVersion>13.0</SupportedOSPlatformVersion>
+  </PropertyGroup>
+
+  <!-- Desktop-only sources: native window/webview interop and everything built on it.
+       The mobile shells (Mobile\, plus Android\/iOS\ in later steps) replace these. -->
+  <ItemGroup Condition="'$(GaldrIsMobile)' == 'true'">
+    <Compile Remove="Galdr.cs" />
+    <Compile Remove="GaldrWebview.cs" />
+    <Compile Remove="WebviewBindings.cs" />
+    <Compile Remove="Win32Bindings.cs" />
+    <Compile Remove="ObjCBindings.cs" />
+    <Compile Remove="GTK3Bindings.cs" />
+    <Compile Remove="WebKit2GTKBindings.cs" />
+    <Compile Remove="NfdBindings.cs" />
+    <Compile Remove="DialogService.cs" />
+    <Compile Remove="EventService.cs" />
+    <Compile Remove="SingleInstanceCoordinator.cs" />
+    <Compile Remove="SingleInstanceLock.cs" />
+    <Compile Remove="SingleInstanceMessage.cs" />
+    <Compile Remove="WindowActivator.cs" />
+    <Compile Remove="LocalHostedContent.cs" />
+    <Compile Remove="EmbeddedContent.cs" />
+    <Compile Remove="IWebviewContentSetup.cs" />
+    <Compile Remove="FolderContent.cs" />
+    <Compile Remove="MultiplatformContent.Desktop.cs" />
+  </ItemGroup>
+
+  <!-- Mobile-only sources. -->
+  <ItemGroup Condition="'$(GaldrIsMobile)' != 'true'">
+    <Compile Remove="Mobile\**" />
+  </ItemGroup>
+
+  <!-- Android-only sources (the Android shell). -->
+  <ItemGroup Condition="'$(_GaldrPlatform)' != 'android'">
+    <Compile Remove="Android\**" />
+  </ItemGroup>
+
+  <!-- iOS-only sources (the iOS shell). -->
+  <ItemGroup Condition="'$(_GaldrPlatform)' != 'ios'">
+    <Compile Remove="iOS\**" />
+  </ItemGroup>
+
+  <!-- The Android SDK's implicit globs pick up the desktop .so files under runtimes\
+       as Android native libraries; they are linux-x64 desktop binaries, not Android ABIs. -->
+  <ItemGroup Condition="'$(_GaldrPlatform)' == 'android'">
+    <AndroidNativeLibrary Remove="runtimes\**\*.so" />
+  </ItemGroup>
 
   <ItemGroup>
     <None Include="wizard-round-128.png" Pack="true" PackagePath="" />
@@ -41,7 +99,7 @@
     <None Include="..\LICENSE.txt" Pack="true" PackagePath="" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(GaldrIsMobile)' != 'true'">
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
@@ -49,7 +107,21 @@
     <PackageReference Include="GaldrJson" Version="1.2.2" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- On desktop, DI comes in through the Microsoft.AspNetCore.App framework
+       reference; the mobile targets need the package directly. -->
+  <ItemGroup Condition="'$(GaldrIsMobile)' == 'true'">
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10" />
+  </ItemGroup>
+
+  <!-- WebViewAssetLoader, WebViewCompat (document-start scripts), and the
+       AndroidX inset/window compat APIs used by the Android shell. -->
+  <ItemGroup Condition="'$(_GaldrPlatform)' == 'android'">
+    <PackageReference Include="Xamarin.AndroidX.WebKit" Version="1.16.0.1" />
+  </ItemGroup>
+
+  <!-- Native desktop webview/dialog libraries. Packed once; only meaningful for
+       desktop RIDs, so they are not copied into mobile builds. -->
+  <ItemGroup Condition="'$(GaldrIsMobile)' != 'true'">
     <Content Include="runtimes\**\*.*" Pack="true" PackagePath="runtimes" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

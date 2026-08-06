@@ -135,6 +135,19 @@ public sealed class GaldrOptions
     public Action<string[], string> SecondInstance { get; init; }
 
     /// <summary>
+    /// Mobile only. Runs when the app moves to the background (Android <c>OnPause</c>,
+    /// iOS <c>sceneDidEnterBackground</c>) — the mobile "save now" moment. Never fires
+    /// on desktop.
+    /// </summary>
+    public Action<IServiceProvider> Background { get; init; }
+
+    /// <summary>
+    /// Mobile only. Runs when the app returns to the foreground after having been
+    /// backgrounded. Does not fire on the initial launch. Never fires on desktop.
+    /// </summary>
+    public Action<IServiceProvider> Resume { get; init; }
+
+    /// <summary>
     /// Fires when an exception escapes a galdrInvoke command handler. The error has already
     /// been serialized and returned to the frontend — this hook exists for logging and
     /// telemetry. The service provider is passed so the hook can resolve app services (such

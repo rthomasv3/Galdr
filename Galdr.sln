@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.8.34511.84
+# Visual Studio Version 18
+VisualStudioVersion = 18.8.12023.21 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Galdr", "Galdr\Galdr.csproj", "{2F795744-D36B-4D81-9FA1-96C45747C719}"
 EndProject
@@ -21,8 +21,6 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Galdr.Native", "Galdr.Native\Galdr.Native.csproj", "{3F158B69-C703-4E7E-83ED-905343F10D25}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GaldrTestHarness.Native", "Tests\GaldrTestHarness.Native\GaldrTestHarness.Native.csproj", "{62547B99-197E-41EC-8206-4D475795F9EE}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Galdr.Native.SourceGenerators", "Galdr.Native.SourceGenerators\Galdr.Native.SourceGenerators.csproj", "{EA4BE883-4CE5-4D89-A2D9-FEFB7A540684}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -50,10 +48,6 @@ Global
 		{62547B99-197E-41EC-8206-4D475795F9EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{62547B99-197E-41EC-8206-4D475795F9EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{62547B99-197E-41EC-8206-4D475795F9EE}.Release|Any CPU.Build.0 = Release|Any CPU
-		{EA4BE883-4CE5-4D89-A2D9-FEFB7A540684}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EA4BE883-4CE5-4D89-A2D9-FEFB7A540684}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EA4BE883-4CE5-4D89-A2D9-FEFB7A540684}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EA4BE883-4CE5-4D89-A2D9-FEFB7A540684}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
