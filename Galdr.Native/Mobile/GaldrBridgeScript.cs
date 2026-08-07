@@ -53,8 +53,24 @@ internal static class GaldrBridgeScript
             // WebView.canGoBack() cannot see SPA pushState entries. Returns true when
             // the press was handled; false lets native background the app. Apps can
             // override with their own window.__handleBack.
+            //
+            // Routers in the vue-router family stamp { back, current, ... } into
+            // history.state (in hash and web history modes alike), which answers
+            // "is there anywhere to go back to" exactly - including back: null on a
+            // redirected landing screen, where backing out should background the app
+            // rather than appear dead. The pathname check is the fallback for
+            // path-routed apps without that convention; it can never work for hash
+            // routing, where the pathname is always '/'.
             if (!window.__handleBack) {
                 window.__handleBack = () => {
+                    const state = window.history.state;
+                    if (state && state.back !== undefined) {
+                        if (state.back !== null) {
+                            window.history.back();
+                            return true;
+                        }
+                        return false;
+                    }
                     if (window.location.pathname !== '/') {
                         window.history.back();
                         return true;
