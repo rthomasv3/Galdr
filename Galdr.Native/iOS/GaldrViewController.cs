@@ -84,6 +84,7 @@ public sealed class GaldrViewController : UIViewController, IGaldrMobileShell
         _webView.AllowsBackForwardNavigationGestures = true;
 
         GaldrKeyboardFocus.AllowProgrammaticKeyboard(_webView);
+        GaldrKeyboardAccessory.Attach(_webView);
 
         if (OperatingSystem.IsIOSVersionAtLeast(16, 4))
         {

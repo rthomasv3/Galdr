@@ -81,6 +81,15 @@ public sealed class GaldrBuilder
         ];
         
         AddAction<string>("__openExternal", ExternalUrlOpener.Open);
+
+        // Registered on every platform so the frontend can call it unconditionally
+        // and the promise always resolves; only iOS has an accessory bar to hide.
+        AddAction<bool>("__setKeyboardAccessoryVisible", visible =>
+        {
+#if IOS
+            GaldrKeyboardAccessory.SetVisible(visible);
+#endif
+        });
     }
 
     #endregion
