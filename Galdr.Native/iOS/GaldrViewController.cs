@@ -83,6 +83,8 @@ public sealed class GaldrViewController : UIViewController, IGaldrMobileShell
         // on hardware during the spike, so it ships enabled.
         _webView.AllowsBackForwardNavigationGestures = true;
 
+        GaldrKeyboardFocus.AllowProgrammaticKeyboard(_webView);
+
         if (OperatingSystem.IsIOSVersionAtLeast(16, 4))
         {
             _webView.Inspectable = options.Debug; // Safari > Develop on a Mac can attach
