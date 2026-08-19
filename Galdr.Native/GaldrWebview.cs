@@ -186,13 +186,17 @@ public class GaldrWebview : IDisposable
 
     private void InterceptExternalLinks()
     {
+        // Only links to a foreign origin are external — in-app anchors (SPA router
+        // links resolve against the app origin, e.g. https://galdr.localhost/...)
+        // must stay in the webview. Same policy as the Android/iOS shells.
         string script = @"
             document.addEventListener('click', function(e) {
                 var target = e.target;
                 while (target && target.tagName !== 'A') {
                     target = target.parentElement;
                 }
-                if (target && target.href && (target.href.startsWith('http://') || target.href.startsWith('https://'))) {
+                if (target && target.href && (target.href.startsWith('http://') || target.href.startsWith('https://')) &&
+                    target.origin !== window.location.origin) {
                     e.preventDefault();
                     window.galdrInvoke('__openExternal', { url: target.href });
                 }

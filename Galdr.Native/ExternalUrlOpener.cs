@@ -1,6 +1,8 @@
 using System;
+#if !ANDROID && !IOS
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+#endif
 
 namespace Galdr.Native;
 
@@ -9,6 +11,7 @@ namespace Galdr.Native;
 /// </summary>
 internal static class ExternalUrlOpener
 {
+#if !ANDROID && !IOS
     #region Fields
 
     private static readonly string[] LinuxOpeners =
@@ -21,6 +24,7 @@ internal static class ExternalUrlOpener
     };
 
     #endregion
+#endif
 
     #region Public Methods
 
@@ -34,6 +38,11 @@ internal static class ExternalUrlOpener
             Uri.TryCreate(url, UriKind.Absolute, out Uri uri) &&
             (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps))
         {
+#if ANDROID
+            OpenOnAndroid(uri.AbsoluteUri);
+#elif IOS
+            OpenOnIos(uri.AbsoluteUri);
+#else
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
                 OpenOnMac(uri.AbsoluteUri);
@@ -46,11 +55,44 @@ internal static class ExternalUrlOpener
             {
                 OpenOnWindows(uri.AbsoluteUri);
             }
+#endif
         }
     }
 
     #endregion
 
+#if ANDROID
+    #region Private Methods
+
+    private static void OpenOnAndroid(string url)
+    {
+        Android.Content.Intent intent = new Android.Content.Intent(
+            Android.Content.Intent.ActionView,
+            Android.Net.Uri.Parse(url));
+        intent.AddFlags(Android.Content.ActivityFlags.NewTask);
+        Android.App.Application.Context.StartActivity(intent);
+    }
+
+    #endregion
+#endif
+
+#if IOS
+    #region Private Methods
+
+    private static void OpenOnIos(string url)
+    {
+        // OpenUrl must run on the main thread.
+        CoreFoundation.DispatchQueue.MainQueue.DispatchAsync(() =>
+        {
+            UIKit.UIApplication.SharedApplication.OpenUrl(
+                new Foundation.NSUrl(url), new Foundation.NSDictionary(), null);
+        });
+    }
+
+    #endregion
+#endif
+
+#if !ANDROID && !IOS
     #region Private Methods
 
     private static void OpenOnWindows(string url)
@@ -127,4 +169,5 @@ internal static class ExternalUrlOpener
     }
 
     #endregion
+#endif
 }

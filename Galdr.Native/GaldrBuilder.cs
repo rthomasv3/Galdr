@@ -26,7 +26,7 @@ public sealed class GaldrBuilder
     private int _minWidth = 800;
     private int _minHeight = 600;
     private int _port = 0;
-    private bool _debug = false;
+    private bool? _debug;
     private Dictionary<string, CommandInfo> _commands = new();
     private IWebviewContent _contentProvider;
     private bool _showLoading;
@@ -44,6 +44,8 @@ public sealed class GaldrBuilder
     private Action<CommandErrorContext, IServiceProvider> _onCommandError;
     private Action<UnhandledExceptionContext, IServiceProvider> _onUnhandledException;
     private Action<Galdr, WindowChangedContext, IServiceProvider> _windowChanged;
+    private Action<IServiceProvider> _background;
+    private Action<IServiceProvider> _resume;
 
     #endregion
 
@@ -125,6 +127,11 @@ public sealed class GaldrBuilder
 
     /// <summary>
     /// Set to true to activate a debug view (if the current webview implementation supports it).
+    /// When never called, debug defaults to whether the app was built in the Debug
+    /// configuration — detected at runtime via the <c>galdr.dev.json</c> marker the
+    /// Galdr.Native build targets stage into Debug builds — so devtools are available in
+    /// Debug builds and off in Release builds with no <c>#if</c> in app code. An explicit
+    /// call always wins, in both directions.
     /// </summary>
     public GaldrBuilder SetDebug(bool debug)
     {
@@ -287,6 +294,29 @@ public sealed class GaldrBuilder
     public GaldrBuilder OnWindowChanged(Action<Galdr, WindowChangedContext, IServiceProvider> handler)
     {
         _windowChanged = handler;
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a handler that fires when the app moves to the background on mobile
+    /// (Android <c>OnPause</c>, iOS <c>sceneDidEnterBackground</c>). This is the mobile
+    /// "save now" moment — mobile apps are never closed, they are backgrounded and may
+    /// be killed by the OS without further notice, so save work belongs here rather than
+    /// in <see cref="OnBeforeClose"/> (which never fires on mobile). No-op on desktop.
+    /// </summary>
+    public GaldrBuilder OnBackground(Action<IServiceProvider> handler)
+    {
+        _background = handler;
+        return this;
+    }
+
+    /// <summary>
+    /// Registers a handler that fires when the app returns to the foreground on mobile
+    /// after having been backgrounded. Does not fire on the initial launch. No-op on desktop.
+    /// </summary>
+    public GaldrBuilder OnResume(Action<IServiceProvider> handler)
+    {
+        _resume = handler;
         return this;
     }
 
@@ -1761,7 +1791,7 @@ public sealed class GaldrBuilder
         {
             Commands = _commands,
             ContentProvider = _contentProvider,
-            Debug = _debug,
+            Debug = _debug ?? GaldrDevMarker.TryRead(out _),
             GaldrJsonOptions = _galdrJsonOptions,
             GaldrJsonSerializer = _galdrJsonSerializer,
             Height = _height,
@@ -1785,6 +1815,8 @@ public sealed class GaldrBuilder
             OnCommandError = _onCommandError,
             OnUnhandledException = _onUnhandledException,
             WindowChanged = _windowChanged,
+            Background = _background,
+            Resume = _resume,
             ServiceProviderAccessor = _serviceProviderAccessor,
         });
     }
