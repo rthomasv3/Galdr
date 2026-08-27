@@ -33,6 +33,7 @@ public class Galdr : IDisposable
     private GCHandle _supportsSecureRestorableStateCallbackHandle;
     private GCHandle _windowChangedCallbackHandle;
     private GCHandle _windowStateChangedCallbackHandle;
+    private GCHandle _quitMenuCallbackHandle;
     private IntPtr _originalWndProc;
     private UnhandledExceptionEventHandler _appDomainExceptionHandler;
     private EventHandler<UnobservedTaskExceptionEventArgs> _unobservedTaskExceptionHandler;
@@ -59,6 +60,9 @@ public class Galdr : IDisposable
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void NSNotificationDelegate(IntPtr self, IntPtr sel, IntPtr notification);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void MenuActionDelegate(IntPtr self, IntPtr sel, IntPtr sender);
 
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate bool GtkConfigureEventDelegate(IntPtr widget, IntPtr eventArg, IntPtr userData);
@@ -401,6 +405,11 @@ public class Galdr : IDisposable
         if (_windowStateChangedCallbackHandle.IsAllocated)
         {
             _windowStateChangedCallbackHandle.Free();
+        }
+
+        if (_quitMenuCallbackHandle.IsAllocated)
+        {
+            _quitMenuCallbackHandle.Free();
         }
 
         if (_singleInstance != null)
@@ -1486,11 +1495,67 @@ public class Galdr : IDisposable
             ObjCBindings.ReleaseNSObject(hideTitle);
             ObjCBindings.ReleaseNSObject(hideKey);
 
+            // Quit deliberately does NOT use AppKit's -[NSApplication terminate:]. That path
+            // force-closes windows via _deallocHardCore: while the webview engine is still
+            // alive and subscribed to window notifications; its delegate then fires against a
+            // torn-down association and trips a live assert() inside libwebview, aborting the
+            // process with SIGABRT ("quit unexpectedly"). It also bypasses windowShouldClose:,
+            // so a registered BeforeClose save workflow never runs.
+            //
+            // Instead, route Quit through the same path as the window's close button so the
+            // main loop unwinds cooperatively and webview_destroy runs in order.
+            IntPtr quitTargetClass = ObjCBindings.objc_allocateClassPair(
+                ObjCBindings.objc_getClass("NSObject"),
+                "GaldrAppMenuTarget",
+                IntPtr.Zero);
+
+            if (quitTargetClass == IntPtr.Zero)
+            {
+                quitTargetClass = ObjCBindings.objc_getClass("GaldrAppMenuTarget");
+            }
+            else
+            {
+                MenuActionDelegate quitCallback = (self, sel, sender) =>
+                {
+                    if (_closing || _options.BeforeClose == null)
+                    {
+                        Terminate();
+                    }
+                    else
+                    {
+                        // Mirrors windowShouldClose: — the handler owns the shutdown and must
+                        // call Terminate() when ready, so quitting is cancelled until then.
+                        _options.BeforeClose(this);
+                    }
+                };
+
+                _quitMenuCallbackHandle = GCHandle.Alloc(quitCallback);
+
+                ObjCBindings.class_addMethod(
+                    quitTargetClass,
+                    ObjCBindings.sel_registerName("galdrQuit:"),
+                    Marshal.GetFunctionPointerForDelegate(quitCallback),
+                    "v@:@");
+
+                ObjCBindings.objc_registerClassPair(quitTargetClass);
+            }
+
+            // NotificationCenter-style lifetime: one instance, never freed, matching the
+            // Galdr instance which is process-singleton in practice.
+            IntPtr quitTarget = ObjCBindings.objc_msgSend_IntPtr(
+                ObjCBindings.objc_msgSend_IntPtr(quitTargetClass, allocSel),
+                ObjCBindings.sel_registerName("init"));
+
             IntPtr quitTitle = ObjCBindings.CreateNSString($"Quit {appName}");
             IntPtr quitKey = ObjCBindings.CreateNSString("q");
             IntPtr quitItem = ObjCBindings.objc_msgSend_IntPtr_IntPtr_IntPtr_IntPtr(
                 ObjCBindings.objc_msgSend_IntPtr(menuItemClass, allocSel),
-                initWithTitleSel, quitTitle, ObjCBindings.sel_registerName("terminate:"), quitKey);
+                initWithTitleSel, quitTitle, ObjCBindings.sel_registerName("galdrQuit:"), quitKey);
+
+            // An explicit target is required — with a nil target AppKit walks the responder
+            // chain, finds no galdrQuit: handler, and disables the menu item.
+            ObjCBindings.objc_msgSend_IntPtr_IntPtr(quitItem, ObjCBindings.sel_registerName("setTarget:"), quitTarget);
+
             ObjCBindings.objc_msgSend_IntPtr_IntPtr(appMenu, addItemSel, quitItem);
             ObjCBindings.ReleaseNSObject(quitTitle);
             ObjCBindings.ReleaseNSObject(quitKey);
